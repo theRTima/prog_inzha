@@ -20,13 +20,7 @@ class RestaurantOrderSystem(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-
-        # Заголовок
-        title_label = QLabel('Система управления заказами навынос')
-        title_label.setFont(QFont('Arial', 16, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
-
+        
         # Создаем вкладки
         tab_widget = QTabWidget()
         main_layout.addWidget(tab_widget)
