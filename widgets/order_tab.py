@@ -88,7 +88,7 @@ class OrderTab(QWidget):
         self.order_items_table = QTableWidget()
         self.order_items_table.setColumnCount(4)
         self.order_items_table.setHorizontalHeaderLabels([
-            'Блюдо', 'Количество', 'Цена', 'Сумма'
+            'Блюдо', 'Название', 'Количество', 'Цена'
         ])
         order_details_layout.addWidget(QLabel('Позиции заказа:'))
         order_details_layout.addWidget(self.order_items_table)
