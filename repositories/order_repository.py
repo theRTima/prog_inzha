@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models.order_model import Order, OrderItem
+from models.menu_model import MenuItem
 from typing import List, Optional
 
 class OrderRepository:

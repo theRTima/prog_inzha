@@ -1,12 +1,12 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QLabel, QLineEdit, 
                              QTextEdit, QComboBox, QDateTimeEdit, QGroupBox, 
-                             QFormLayout, QSplitter, QMessageBox)
+                             QFormLayout, QSplitter, QMessageBox, QDialog)
 from PyQt5.QtCore import QDateTime, Qt
 from PyQt5.QtGui import QFont
-
 from config.database import get_db
 from repositories.order_repository import OrderRepository
+from repositories.menu_repository import MenuRepository
 from widgets.dish_selection_dialog import DishSelectionDialog
 
 class OrderTab(QWidget):
