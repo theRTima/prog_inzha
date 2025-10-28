@@ -1,5 +1,4 @@
-name: "prog_inzh"
-version: '1.0'
+version: '3.8'
 
 services:
   db:
@@ -9,10 +8,10 @@ services:
       POSTGRES_USER: restaurant_user
       POSTGRES_PASSWORD: restaurant_pass
     ports:
-      - "5433:5432"
+      - "5433:5432"  # Хост:5433 -> Контейнер:5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: ["postgres", "-c", "listen_addresses=*"]
 
   adminer:
     image: adminer
