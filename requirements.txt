@@ -1,4 +1,4 @@
 PyQt5==5.15.9
-psycopg2-binary==2.8.6
+psycopg2==2.9.5
 SQLAlchemy==2.0.23
 alembic==1.12.1
