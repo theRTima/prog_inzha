@@ -117,6 +117,12 @@ class OrderTab(QWidget):
     def load_orders_from_db(self):
         """Загружает заказы из базы данных"""
         try:
+                # Сохраняем текущую сортировку
+            sort_column = self.orders_table.horizontalHeader().sortIndicatorSection()
+            sort_order = self.orders_table.horizontalHeader().sortIndicatorOrder()
+            
+            # ОТКЛЮЧАЕМ сортировку на время обновления данных
+            self.orders_table.setSortingEnabled(False)
             with get_db() as db:
                 repo = OrderRepository(db)
                 orders = repo.get_all_orders()
@@ -129,6 +135,12 @@ class OrderTab(QWidget):
                     self.orders_table.setItem(row, 3, QTableWidgetItem(str(order.total)))
                     self.orders_table.setItem(row, 4, QTableWidgetItem(order.status))
                     self.orders_table.setItem(row, 5, QTableWidgetItem(order.formatted_created()))
+                
+            #
+            self.orders_table.setSortingEnabled(True)
+            
+            # 
+            self.orders_table.sortByColumn(sort_column, sort_order)
         except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить заказы: {str(e)}')
 
