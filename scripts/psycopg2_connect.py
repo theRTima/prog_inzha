@@ -7,7 +7,7 @@ def test_direct():
             host="localhost",
             database="restaurant_db", 
             user="restaurant_user",
-            password=""  # Явно пустой пароль для trust
+            password="restaurant_pass"
         )
         cursor = conn.cursor()
         cursor.execute("SELECT version()")
