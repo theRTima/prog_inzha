@@ -13,7 +13,6 @@ class OrderTab(QWidget):
     def initUI(self):
         layout = QVBoxLayout(self)
         
-        # Весь код из create_orders_tab
         top_panel = QHBoxLayout()
 
         self.btn_new_order = QPushButton('Новый заказ')

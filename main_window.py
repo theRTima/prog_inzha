@@ -13,7 +13,7 @@ class RestaurantOrderSystem(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('Информационная система ресторана - Заказы навынос')
+        self.setWindowTitle('Информационная система ресторана - Заказы на вынос')
         self.setGeometry(100, 100, 1200, 700)
 
         central_widget = QWidget()
