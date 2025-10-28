@@ -1,6 +1,9 @@
+name: "2C"
+version: '3.8'
+
 services:
-  postgres:
-    image: postgres:15
+  db:
+    image: postgres:16
     environment:
       POSTGRES_DB: restaurant_db
       POSTGRES_USER: restaurant_user
@@ -9,10 +12,15 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    command: |
-      postgres
-      -c listen_addresses=*
-      -c hba_file=/etc/postgresql/pg_hba.conf
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      ADMINER_DEFAULT_SERVER: db
 
 volumes:
   postgres_data:
