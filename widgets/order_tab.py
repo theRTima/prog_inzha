@@ -4,8 +4,10 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                              QFormLayout, QSplitter, QMessageBox)
 from PyQt5.QtCore import QDateTime, Qt
 from PyQt5.QtGui import QFont
+
 from config.database import get_db
 from repositories.order_repository import OrderRepository
+from widgets.dish_selection_dialog import DishSelectionDialog
 
 class OrderTab(QWidget):
     def __init__(self):
@@ -108,15 +110,6 @@ class OrderTab(QWidget):
         splitter.setSizes([400, 400])
 
         layout.addWidget(splitter)
-
-        # Панель управления позициями заказа
-        items_panel = QHBoxLayout()
-        btn_add_item = QPushButton('Добавить блюдо')
-        btn_remove_item = QPushButton('Удалить блюдо')
-        items_panel.addWidget(btn_add_item)
-        items_panel.addWidget(btn_remove_item)
-        items_panel.addStretch()
-        order_details_layout.addLayout(items_panel)
 
         # Подключение сигналов
         self.btn_new_order.clicked.connect(self.new_order)
