@@ -30,3 +30,7 @@ class OrderItem(Base):
     
     order = relationship("Order", back_populates="items")
     menu_item = relationship("MenuItem")
+
+@property
+def calculated_total(self):
+    return sum(item.quantity * item.price for item in self.items)

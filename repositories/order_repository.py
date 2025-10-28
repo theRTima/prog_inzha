@@ -42,12 +42,16 @@ class OrderRepository:
             return True
         return False
     
-    def add_order_item(self, order_id: int, menu_item_id: int, quantity: int, price: float) -> OrderItem:
+    def add_order_item(self, order_id: int, menu_item_id: int, quantity: int) -> OrderItem:
+        menu_item = self.db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+        if not menu_item:
+            raise ValueError("Блюдо не найдено")
+        
         order_item = OrderItem(
             order_id=order_id,
             menu_item_id=menu_item_id,
             quantity=quantity,
-            price=price
+            price=menu_item.price
         )
         self.db.add(order_item)
         self.db.commit()
@@ -56,6 +60,14 @@ class OrderRepository:
         # Обновляем общую сумму заказа
         self._update_order_total(order_id)
         return order_item
+
+    def remove_order_item(self, order_item_id: int):
+        order_item = self.db.query(OrderItem).filter(OrderItem.id == order_item_id).first()
+        if order_item:
+            order_id = order_item.order_id
+            self.db.delete(order_item)
+            self.db.commit()
+            self._update_order_total(order_id)
     
     def _update_order_total(self, order_id: int):
         order = self.get_order(order_id)

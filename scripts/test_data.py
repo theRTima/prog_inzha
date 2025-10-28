@@ -18,13 +18,17 @@ def seed_database():
         db.execute(text("DELETE FROM menu"))
         db.execute(text("DELETE FROM inventory"))
         
-        # Добавляем тестовое меню
         menu_items = [
-            MenuItem(name="Стейк Рибай", category="Горячие блюда", price=1200.00, available=True, description="Стейк с картофелем"),
-            MenuItem(name="Цезарь с курицей", category="Салаты", price=450.00, available=True, description="Салат Цезарь с куриной грудкой"),
-            MenuItem(name="Томатный суп", category="Супы", price=350.00, available=True, description="Томатный суп с базиликом"),
-            MenuItem(name="Тирамису", category="Десерты", price=400.00, available=False, description="Классический тирамису"),
-            MenuItem(name="Кофе латте", category="Напитки", price=250.00, available=True, description="Кофе латте 300 мл"),
+            MenuItem(name="Стейк Рибай", category="Горячие блюда", price=1200.00, available=True),
+            MenuItem(name="Цезарь с курицей", category="Салаты", price=450.00, available=True),
+            MenuItem(name="Томатный суп", category="Супы", price=350.00, available=True),
+            MenuItem(name="Тирамису", category="Десерты", price=400.00, available=True),
+            MenuItem(name="Кофе латте", category="Напитки", price=250.00, available=True),
+            MenuItem(name="Бургер", category="Горячие блюда", price=600.00, available=True),
+            MenuItem(name="Греческий салат", category="Салаты", price=380.00, available=True),
+            MenuItem(name="Крем-суп грибной", category="Супы", price=320.00, available=True),
+            MenuItem(name="Чизкейк", category="Десерты", price=350.00, available=True),
+            MenuItem(name="Сок апельсиновый", category="Напитки", price=180.00, available=True),
         ]
         
         for item in menu_items:
