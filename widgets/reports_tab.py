@@ -9,8 +9,8 @@ class ReportsTab(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout(self)
-        
-        # Весь код из create_reports_tab
+
+        # Панель управления отчетами
         control_panel = QHBoxLayout()
 
         self.report_type = QComboBox()
@@ -45,6 +45,7 @@ class ReportsTab(QWidget):
 
         layout.addLayout(control_panel)
 
+        # Область для отчета
         self.report_text = QTextEdit()
         self.report_text.setPlaceholderText('Здесь будет отображаться сгенерированный отчет...')
         layout.addWidget(self.report_text)
