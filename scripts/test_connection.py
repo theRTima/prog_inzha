@@ -1,9 +1,9 @@
-from config.database import get_db, engine
-from models.order_model import Order
-
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.database import get_db, engine
+from models.order_model import Order
 
 def test_db():
     try:
