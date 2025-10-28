@@ -1,4 +1,8 @@
-from config.database import SessionLocal, engine
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.database import SessionLocal
 from models.menu_model import MenuItem
 from models.inventory_model import Inventory
 from models.order_model import Order, OrderItem

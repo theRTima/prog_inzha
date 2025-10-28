@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from config.database import engine, Base
 from models.order_model import Order
 from models.menu_model import MenuItem
