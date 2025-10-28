@@ -1,5 +1,5 @@
-name: "2C"
-version: '3.8'
+name: "prog_inzh"
+version: '1.0'
 
 services:
   db:
