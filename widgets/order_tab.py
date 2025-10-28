@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                              QTableWidgetItem, QPushButton, QLabel, QLineEdit, 
                              QTextEdit, QComboBox, QDateTimeEdit, QGroupBox, 
                              QFormLayout, QSplitter, QMessageBox)
-from PyQt5.QtCore import QDateTime
+from PyQt5.QtCore import QDateTime, Qt
 from PyQt5.QtGui import QFont
 from config.database import get_db
 from repositories.order_repository import OrderRepository
@@ -46,6 +46,8 @@ class OrderTab(QWidget):
         self.orders_table.setHorizontalHeaderLabels([
             'ID', 'Клиент', 'Телефон', 'Сумма', 'Статус', 'Время заказа'
         ])
+
+        self.orders_table.setSortingEnabled(True)
 
         orders_layout.addWidget(self.orders_table)
         splitter.addWidget(orders_group)
