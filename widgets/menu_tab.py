@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QLabel, QComboBox)
-from PyQt5.QtGui import QFont
 
 class MenuTab(QWidget):
     def __init__(self):
@@ -9,8 +8,8 @@ class MenuTab(QWidget):
 
     def initUI(self):
         layout = QVBoxLayout(self)
-        
-        # Весь код из create_menu_tab
+
+        # Верхняя панель
         top_panel = QHBoxLayout()
 
         btn_add_dish = QPushButton('Добавить блюдо')
@@ -28,6 +27,7 @@ class MenuTab(QWidget):
 
         layout.addLayout(top_panel)
 
+        # Таблица меню
         self.menu_table = QTableWidget()
         self.menu_table.setColumnCount(6)
         self.menu_table.setHorizontalHeaderLabels([
@@ -38,10 +38,14 @@ class MenuTab(QWidget):
         layout.addWidget(self.menu_table)
 
     def populate_sample_menu(self):
+        """Заполняет таблицу меню тестовыми данными"""
         sample_menu = [
             ['001', 'Стейк Рибай', 'Горячие блюда', '1200 руб.', 'Да', 'Стейк с картофелем'],
             ['002', 'Цезарь с курицей', 'Салаты', '450 руб.', 'Да', 'Салат Цезарь с куриной грудкой'],
+            ['003', 'Томатный суп', 'Супы', '350 руб.', 'Да', 'Томатный суп с базиликом'],
+            ['004', 'Тирамису', 'Десерты', '400 руб.', 'Нет', 'Классический тирамису'],
         ]
+
         self.menu_table.setRowCount(len(sample_menu))
         for row, dish in enumerate(sample_menu):
             for col, data in enumerate(dish):
