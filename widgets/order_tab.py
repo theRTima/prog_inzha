@@ -47,6 +47,7 @@ class OrderTab(QWidget):
             'ID', 'Клиент', 'Телефон', 'Сумма', 'Статус', 'Время заказа'
         ])
 
+        #ДЛЯ СОРТИРОВКИ ТАБЛИЦЫ
         self.orders_table.setSortingEnabled(True)
 
         orders_layout.addWidget(self.orders_table)
@@ -117,10 +118,12 @@ class OrderTab(QWidget):
     def load_orders_from_db(self):
         """Загружает заказы из базы данных"""
         try:
+            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - НАЧАЛО
             sort_column = self.orders_table.horizontalHeader().sortIndicatorSection()
             sort_order = self.orders_table.horizontalHeader().sortIndicatorOrder()
             self.orders_table.setSortingEnabled(False)
-
+            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - НАЧАЛО
+            
             with get_db() as db:
                 repo = OrderRepository(db)
                 orders = repo.get_all_orders()
@@ -134,10 +137,11 @@ class OrderTab(QWidget):
                     self.orders_table.setItem(row, 4, QTableWidgetItem(order.status))
                     self.orders_table.setItem(row, 5, QTableWidgetItem(order.formatted_created()))
                 
-            #
+            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - КОНЕЦ
             self.orders_table.setSortingEnabled(True)
-
             self.orders_table.sortByColumn(sort_column, sort_order)
+            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - КОНЕЦ
+            
         except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить заказы: {str(e)}')
 
