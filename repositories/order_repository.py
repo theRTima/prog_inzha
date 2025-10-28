@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models import Order, OrderItem
+from models.order_model import Order, OrderItem
 from typing import List, Optional
 
 class OrderRepository:
@@ -24,13 +24,25 @@ class OrderRepository:
     def get_all_orders(self) -> List[Order]:
         return self.db.query(Order).order_by(Order.created.desc()).all()
     
-    def update_order_status(self, order_id: int, status: str):
+    def update_order(self, order_id: int, **kwargs) -> Optional[Order]:
         order = self.get_order(order_id)
         if order:
-            order.status = status
+            for key, value in kwargs.items():
+                if hasattr(order, key):
+                    setattr(order, key, value)
             self.db.commit()
+            self.db.refresh(order)
+        return order
     
-    def add_order_item(self, order_id: int, menu_item_id: int, quantity: int, price: float):
+    def delete_order(self, order_id: int) -> bool:
+        order = self.get_order(order_id)
+        if order:
+            self.db.delete(order)
+            self.db.commit()
+            return True
+        return False
+    
+    def add_order_item(self, order_id: int, menu_item_id: int, quantity: int, price: float) -> OrderItem:
         order_item = OrderItem(
             order_id=order_id,
             menu_item_id=menu_item_id,
@@ -39,9 +51,11 @@ class OrderRepository:
         )
         self.db.add(order_item)
         self.db.commit()
+        self.db.refresh(order_item)
         
         # Обновляем общую сумму заказа
         self._update_order_total(order_id)
+        return order_item
     
     def _update_order_total(self, order_id: int):
         order = self.get_order(order_id)
