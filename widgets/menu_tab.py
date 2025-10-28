@@ -25,6 +25,7 @@ class MenuTab(QWidget):
         top_panel.addWidget(QLabel('Фильтр:'))
         top_panel.addWidget(self.menu_filter)
 
+        
         layout.addLayout(top_panel)
 
         # Таблица меню
@@ -33,6 +34,8 @@ class MenuTab(QWidget):
         self.menu_table.setHorizontalHeaderLabels([
             'ID', 'Название', 'Категория', 'Цена', 'Доступно', 'Описание'
         ])
+
+        self.menu_table.setSortingEnabled(True)
 
         self.populate_sample_menu()
         layout.addWidget(self.menu_table)
