@@ -1,14 +1,18 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QLabel, QLineEdit, 
                              QTextEdit, QComboBox, QDateTimeEdit, QGroupBox, 
-                             QFormLayout, QSplitter)
+                             QFormLayout, QSplitter, QMessageBox)
 from PyQt5.QtCore import QDateTime
 from PyQt5.QtGui import QFont
+from config.database import get_db
+from repositories.order_repository import OrderRepository
 
 class OrderTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.current_order_id = None
         self.initUI()
+        self.load_orders_from_db()
 
     def initUI(self):
         layout = QVBoxLayout(self)
@@ -16,16 +20,16 @@ class OrderTab(QWidget):
         # Верхняя панель с кнопками
         top_panel = QHBoxLayout()
 
-        btn_new_order = QPushButton('Новый заказ')
-        btn_edit_order = QPushButton('Редактировать')
+        self.btn_new_order = QPushButton('Новый заказ')
+        self.btn_save_order = QPushButton('Сохранить заказ')
+        self.btn_delete_order = QPushButton('Удалить заказ')
         btn_complete_order = QPushButton('Завершить заказ')
-        btn_cancel_order = QPushButton('Отменить заказ')
         btn_print_receipt = QPushButton('Печать чека')
 
-        top_panel.addWidget(btn_new_order)
-        top_panel.addWidget(btn_edit_order)
+        top_panel.addWidget(self.btn_new_order)
+        top_panel.addWidget(self.btn_save_order)
+        top_panel.addWidget(self.btn_delete_order)
         top_panel.addWidget(btn_complete_order)
-        top_panel.addWidget(btn_cancel_order)
         top_panel.addWidget(btn_print_receipt)
         top_panel.addStretch()
 
@@ -43,7 +47,6 @@ class OrderTab(QWidget):
             'ID', 'Клиент', 'Телефон', 'Сумма', 'Статус', 'Время заказа'
         ])
 
-        self.populate_sample_orders()
         orders_layout.addWidget(self.orders_table)
         splitter.addWidget(orders_group)
 
@@ -104,24 +107,32 @@ class OrderTab(QWidget):
         layout.addWidget(splitter)
 
         # Подключение сигналов
-        btn_new_order.clicked.connect(self.new_order)
+        self.btn_new_order.clicked.connect(self.new_order)
+        self.btn_save_order.clicked.connect(self.save_order)
+        self.btn_delete_order.clicked.connect(self.delete_order)
         self.orders_table.itemSelectionChanged.connect(self.on_order_selected)
 
-    def populate_sample_orders(self):
-        """Заполняет таблицу заказов тестовыми данными"""
-        sample_orders = [
-            ['ORD001', 'Иван Петров', '+7 (912) 345-67-89', '2500 руб.', 'Новый', '2024-01-15 12:30'],
-            ['ORD002', 'Мария Сидорова', '+7 (923) 456-78-90', '1800 руб.', 'Готовится', '2024-01-15 12:45'],
-            ['ORD003', 'Алексей Иванов', '+7 (934) 567-89-01', '3200 руб.', 'Готов к выдаче', '2024-01-15 13:00'],
-        ]
-
-        self.orders_table.setRowCount(len(sample_orders))
-        for row, order in enumerate(sample_orders):
-            for col, data in enumerate(order):
-                self.orders_table.setItem(row, col, QTableWidgetItem(str(data)))
+    def load_orders_from_db(self):
+        """Загружает заказы из базы данных"""
+        try:
+            with get_db() as db:
+                repo = OrderRepository(db)
+                orders = repo.get_all_orders()
+                
+                self.orders_table.setRowCount(len(orders))
+                for row, order in enumerate(orders):
+                    self.orders_table.setItem(row, 0, QTableWidgetItem(str(order.id)))
+                    self.orders_table.setItem(row, 1, QTableWidgetItem(order.customer_name))
+                    self.orders_table.setItem(row, 2, QTableWidgetItem(order.phone or ""))
+                    self.orders_table.setItem(row, 3, QTableWidgetItem(str(order.total)))
+                    self.orders_table.setItem(row, 4, QTableWidgetItem(order.status))
+                    self.orders_table.setItem(row, 5, QTableWidgetItem(order.formatted_created()))
+        except Exception as e:
+            QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить заказы: {str(e)}')
 
     def new_order(self):
         """Создание нового заказа"""
+        self.current_order_id = None
         self.order_id.clear()
         self.order_customer.clear()
         self.order_phone.clear()
@@ -131,19 +142,108 @@ class OrderTab(QWidget):
         self.order_items_table.setRowCount(0)
         self.order_total.setText('Итого: 0 руб.')
 
+    def save_order(self):
+        """Сохранение заказа в базу данных"""
+        try:
+            customer_name = self.order_customer.text().strip()
+            if not customer_name:
+                QMessageBox.warning(self, 'Ошибка', 'Введите имя клиента')
+                return
+
+            with get_db() as db:
+                repo = OrderRepository(db)
+                
+                if self.current_order_id:
+                    # Обновление существующего заказа
+                    order = repo.update_order(
+                        self.current_order_id,
+                        customer_name=customer_name,
+                        phone=self.order_phone.text(),
+                        status=self.order_status.currentText(),
+                        notes=self.order_notes.toPlainText()
+                    )
+                    if order:
+                        QMessageBox.information(self, 'Успех', f'Заказ #{order.id} обновлен')
+                else:
+                    # Создание нового заказа
+                    order = repo.create_order(
+                        customer_name=customer_name,
+                        phone=self.order_phone.text(),
+                        notes=self.order_notes.toPlainText()
+                    )
+                    self.current_order_id = order.id
+                    self.order_id.setText(str(order.id))
+                    QMessageBox.information(self, 'Успех', f'Создан новый заказ #{order.id}')
+                
+                # Обновляем таблицу заказов
+                self.load_orders_from_db()
+                
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f'Не удалось сохранить заказ: {str(e)}')
+
+    def delete_order(self):
+        """Удаление выбранного заказа"""
+        if not self.current_order_id:
+            QMessageBox.warning(self, 'Ошибка', 'Выберите заказ для удаления')
+            return
+        
+        reply = QMessageBox.question(self, 'Подтверждение', 
+                                   f'Вы уверены, что хотите удалить заказ #{self.current_order_id}?',
+                                   QMessageBox.Yes | QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            try:
+                with get_db() as db:
+                    repo = OrderRepository(db)
+                    if repo.delete_order(self.current_order_id):
+                        QMessageBox.information(self, 'Успех', 'Заказ удален')
+                        self.new_order()  # Очищаем форму
+                        self.load_orders_from_db()  # Обновляем таблицу
+            except Exception as e:
+                QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить заказ: {str(e)}')
+
     def on_order_selected(self):
         """Обработчик выбора заказа в таблице"""
         current_row = self.orders_table.currentRow()
         if current_row >= 0:
-            order_id = self.orders_table.item(current_row, 0).text()
-            customer = self.orders_table.item(current_row, 1).text()
-            phone = self.orders_table.item(current_row, 2).text()
-            status = self.orders_table.item(current_row, 4).text()
+            try:
+                order_id = int(self.orders_table.item(current_row, 0).text())
+                self.current_order_id = order_id
+                
+                with get_db() as db:
+                    repo = OrderRepository(db)
+                    order = repo.get_order(order_id)
+                    
+                    if order:
+                        self.order_id.setText(str(order.id))
+                        self.order_customer.setText(order.customer_name)
+                        self.order_phone.setText(order.phone or "")
+                        self.order_notes.setPlainText(order.notes or "")
+                        
+                        # Устанавливаем статус
+                        index = self.order_status.findText(order.status)
+                        if index >= 0:
+                            self.order_status.setCurrentIndex(index)
+                        
+                        # Устанавливаем время создания
+                        if order.created:
+                            self.order_created.setDateTime(order.created)
+                        
+                        # Обновляем итоговую сумму
+                        self.order_total.setText(f'Итого: {order.total} руб.')
+                        
+                        # Загружаем позиции заказа
+                        self.load_order_items(order)
+                        
+            except Exception as e:
+                QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить данные заказа: {str(e)}')
 
-            self.order_id.setText(order_id)
-            self.order_customer.setText(customer)
-            self.order_phone.setText(phone)
-
-            index = self.order_status.findText(status)
-            if index >= 0:
-                self.order_status.setCurrentIndex(index)
+    def load_order_items(self, order):
+        """Загружает позиции выбранного заказа"""
+        self.order_items_table.setRowCount(len(order.items))
+        for row, item in enumerate(order.items):
+            dish_name = item.menu_item.name if item.menu_item else "Неизвестно"
+            self.order_items_table.setItem(row, 0, QTableWidgetItem(dish_name))
+            self.order_items_table.setItem(row, 1, QTableWidgetItem(str(item.quantity)))
+            self.order_items_table.setItem(row, 2, QTableWidgetItem(str(item.price)))
+            self.order_items_table.setItem(row, 3, QTableWidgetItem(str(item.quantity * item.price)))
