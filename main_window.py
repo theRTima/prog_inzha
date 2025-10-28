@@ -7,10 +7,25 @@ from widgets.menu_tab import MenuTab
 from widgets.inventory_tab import InventoryTab
 from widgets.reports_tab import ReportsTab
 
+from config.database import Base, engine
+from models.order_model import Order
+from models.menu_model import MenuItem
+from models.inventory_model import Inventory
+
 class RestaurantOrderSystem(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        self.init_database()
         self.initUI()
+    
+    def init_database(self):
+        """Создает таблицы в базе данных если они не существуют"""
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("База данных инициализирована")
+        except Exception as e:
+            print(f"Ошибка инициализации БД: {e}")
 
     def initUI(self):
         self.setWindowTitle('Информационная система ресторана - Заказы на вынос')
