@@ -15,6 +15,9 @@ class Order(Base):
     total = Column(DECIMAL(10, 2), default=0)
     
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    
+    def formatted_created(self):
+        return self.created.strftime("%Y-%m-%d %H:%M") if self.created else ""
 
 class OrderItem(Base):
     __tablename__ = "order_items"
