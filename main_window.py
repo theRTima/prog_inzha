@@ -35,5 +35,3 @@ class RestaurantOrderSystem(QMainWindow):
         tab_widget.addTab(self.menu_tab, 'Меню')
         tab_widget.addTab(self.inventory_tab, 'Инвентарь')
         tab_widget.addTab(self.reports_tab, 'Отчеты')
-
-        self.statusBar().showMessage('Готов к работе')
