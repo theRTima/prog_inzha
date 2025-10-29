@@ -11,14 +11,11 @@ try:
     engine = create_engine(DATABASE_URL)
     
     def init_database():
-        """Безопасная инициализация БД"""
-        # Импортируем все модели из единого файла
         from models.models import MenuItem, Inventory, Recipe, Order, OrderItem
         
         Base.metadata.create_all(bind=engine)
         print("DB INITED")
     
-    # Проверяем подключение
     with engine.connect() as conn:
         print("connected to PostgreSQL")
         init_database()

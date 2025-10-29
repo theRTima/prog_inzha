@@ -61,3 +61,7 @@ class OrderItem(Base):
     
     order = relationship("Order", back_populates="items", lazy="select")
     menu_item = relationship("MenuItem", lazy="select")
+
+@property
+def formatted_created(self):
+    return self.created.strftime("%d.%m.%Y%H:%M") if self.created else None
