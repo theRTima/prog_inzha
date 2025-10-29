@@ -4,7 +4,7 @@
 
 Система по типу 1С на Qt и Python.
 
-#Для запуска
+# Для запуска
 
 1)docker-compose up -d
 2)Запустить reset_database.py
