@@ -4,29 +4,25 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.database import SessionLocal
-from models.menu_model import MenuItem
-from models.inventory_model import Inventory
-from models.recipe_model import Recipe
-from models.order_model import Order, OrderItem
+from models.models import MenuItem, Inventory, Recipe, Order, OrderItem  # Обновленный импорт
 from sqlalchemy.sql import text
 
 def seed_database():
     db = SessionLocal()
     
     try:
-        # Очищаем таблицы в правильном порядке (из-за внешних ключей)
+        # Очищаем таблицы в правильном порядке
         db.execute(text("DELETE FROM order_items"))
         db.execute(text("DELETE FROM orders"))
         db.execute(text("DELETE FROM recipes"))
-        db.execute(text("DELETE FROM menu_items"))  # ОБНОВЛЕНО: menu -> menu_items
+        db.execute(text("DELETE FROM menu_items"))
         db.execute(text("DELETE FROM inventory"))
         
         db.commit()
         print("✓ Старые данные очищены")
         
-        # Добавляем тестовое меню
-        menu_items = [
-            MenuItem(name="Стейк Рибай", category="Горячие блюда", price=1200.00, available=True, description="Стейк с картофелем"),
+        # Добавляем тестовые данные (код без изменений)
+        menu_items = [MenuItem(name="Стейк Рибай", category="Горячие блюда", price=1200.00, available=True, description="Стейк с картофелем"),
             MenuItem(name="Цезарь с курицей", category="Салаты", price=450.00, available=True, description="Салат Цезарь с куриной грудкой"),
             MenuItem(name="Томатный суп", category="Супы", price=350.00, available=True, description="Томатный суп с базиликом"),
             MenuItem(name="Тирамису", category="Десерты", price=400.00, available=True, description="Классический тирамису"),
@@ -39,11 +35,9 @@ def seed_database():
             db.add(item)
         
         db.commit()
-        print("✓ Меню добавлено")
+        print("menu added")
         
-        # Добавляем тестовый инвентарь
-        inventory_items = [
-            Inventory(name="Говядина", category="Мясо", unit="кг", current_stock=15.5, min_stock=5.0, supplier="Мясной двор"),
+        inventory_items = [Inventory(name="Говядина", category="Мясо", unit="кг", current_stock=15.5, min_stock=5.0, supplier="Мясной двор"),
             Inventory(name="Куриное филе", category="Мясо", unit="кг", current_stock=8.2, min_stock=3.0, supplier="Птицефабрика"),
             Inventory(name="Помидоры", category="Овощи", unit="кг", current_stock=12.0, min_stock=4.0, supplier="Овощная база"),
             Inventory(name="Сыр пармезан", category="Молочные", unit="кг", current_stock=2.5, min_stock=1.0, supplier="Сыроварня"),
@@ -56,7 +50,7 @@ def seed_database():
             db.add(item)
         
         db.commit()
-        print("✓ Инвентарь добавлен")
+        print("warehouse added")
         
         # Получаем ID созданных записей для создания рецептов
         menu_items_in_db = db.query(MenuItem).all()
@@ -92,7 +86,7 @@ def seed_database():
             db.add(recipe)
         
         db.commit()
-        print("✓ Рецепты добавлены")
+        print("recipies added")
         
         # Добавляем тестовые заказы
         orders = [
@@ -105,12 +99,11 @@ def seed_database():
             db.add(order)
         
         db.commit()
-        print("✓ Заказы добавлены")
-        
-        print("✓ Тестовые данные успешно добавлены")
+        print("orders added")
+        print("TEST DATA ADDED")
         
     except Exception as e:
-        print(f"✗ Ошибка при добавлении тестовых данных: {e}")
+        print(f"Error while adding data: {e}")
         db.rollback()
     finally:
         db.close()

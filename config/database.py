@@ -11,23 +11,20 @@ try:
     engine = create_engine(DATABASE_URL)
     
     def init_database():
-        """Безопасная инициализация БД с отложенным импортом моделей"""
-        # Импортируем модели внутри функции чтобы избежать циклических импортов
-        from models.order_model import Order, OrderItem
-        from models.menu_model import MenuItem
-        from models.inventory_model import Inventory
-        from models.recipe_model import Recipe
+        """Безопасная инициализация БД"""
+        # Импортируем все модели из единого файла
+        from models.models import MenuItem, Inventory, Recipe, Order, OrderItem
         
         Base.metadata.create_all(bind=engine)
-        print("✓ Таблицы БД инициализированы")
+        print("DB INITED")
     
     # Проверяем подключение
     with engine.connect() as conn:
-        print("✓ Успешное подключение к PostgreSQL")
+        print("connected to PostgreSQL")
         init_database()
         
 except Exception as e:
-    print(f"✗ Ошибка подключения: {e}")
+    print(f"error: {e}")
     exit(1)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -1,22 +1,6 @@
-from sqlalchemy.orm import Session, relationship
-from sqlalchemy import Column, Integer, String, Boolean, DECIMAL, Text
-from models.menu_model import MenuItem
+from sqlalchemy.orm import Session
+from models.models import MenuItem  # Обновленный импорт
 from typing import List, Optional
-
-from config.database import Base
-
-class MenuItem(Base):
-    __tablename__ = "menu"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    category = Column(String(50))
-    price = Column(DECIMAL(10, 2))
-    available = Column(Boolean, default=True)
-    description = Column(Text)
-    
-    # Связь с рецептами
-    recipe_items = relationship("Recipe", back_populates="menu_item", cascade="all, delete-orphan")
 
 class MenuRepository:
     def __init__(self, db: Session):
@@ -35,7 +19,7 @@ class MenuRepository:
         ).all()
     
     def create_menu_item(self, name: str, category: str, price: float, 
-                    available: bool = True, description: str = "") -> MenuItem:
+                        available: bool = True, description: str = "") -> MenuItem:
         menu_item = MenuItem(
             name=name,
             category=category,
@@ -47,7 +31,7 @@ class MenuRepository:
         self.db.commit()
         self.db.refresh(menu_item)
         return menu_item
-
+    
     def update_menu_item(self, item_id: int, **kwargs) -> Optional[MenuItem]:
         menu_item = self.get_menu_item(item_id)
         if menu_item:
@@ -57,7 +41,7 @@ class MenuRepository:
             self.db.commit()
             self.db.refresh(menu_item)
         return menu_item
-
+    
     def delete_menu_item(self, item_id: int) -> bool:
         menu_item = self.get_menu_item(item_id)
         if menu_item:
