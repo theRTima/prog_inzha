@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.database import SessionLocal
-from models.models import MenuItem, Inventory, Recipe, Order, OrderItem  # Обновленный импорт
+from models.models import MenuItem, Inventory, Recipe, Order, OrderItem
 from sqlalchemy.sql import text
 
 def seed_database():
@@ -19,7 +19,7 @@ def seed_database():
         db.execute(text("DELETE FROM inventory"))
         
         db.commit()
-        print("✓ Старые данные очищены")
+        print("old data deleted")
         
         # Добавляем тестовые данные (код без изменений)
         menu_items = [MenuItem(name="Стейк Рибай", category="Горячие блюда", price=1200.00, available=True, description="Стейк с картофелем"),
