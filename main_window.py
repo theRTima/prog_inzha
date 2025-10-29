@@ -20,7 +20,6 @@ class RestaurantOrderSystem(QMainWindow):
         self.initUI()
     
     def init_database(self):
-        """Создает таблицы в базе данных если они не существуют"""
         try:
             Base.metadata.create_all(bind=engine)
             print("База данных инициализирована")
