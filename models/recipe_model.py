@@ -4,7 +4,6 @@ from config.database import Base
 
 class Recipe(Base):
     __tablename__ = "recipes"
-    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     menu_item_id = Column(Integer, ForeignKey("menu.id"))

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy import Column, Integer, String, Boolean, DECIMAL, Text
-from models.menu_model import MenuItem
+from models import MenuItem
 from typing import List, Optional
 
 from config.database import Base

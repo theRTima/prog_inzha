@@ -3,11 +3,26 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
 
-# Используем те же настройки что в docker-compose
 DATABASE_URL = "postgresql://restaurant_user:restaurant_pass@localhost:5433/restaurant_db"
 
 Base = declarative_base()
-engine = create_engine(DATABASE_URL)
+
+try:
+    engine = create_engine(DATABASE_URL)
+    
+    def init_database():
+        from models import Order, OrderItem, MenuItem, Inventory, Recipe
+        Base.metadata.create_all(bind=engine)
+        print("DB initialized")
+    
+    with engine.connect() as conn:
+        print("all good")
+        init_database()
+        
+except Exception as e:
+    print(f"error: {e}")
+    exit(1)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @contextmanager
@@ -20,5 +35,3 @@ def get_db():
         raise
     finally:
         db.close()
-
-print("Используем настройки из docker-compose")
