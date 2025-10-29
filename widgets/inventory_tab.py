@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QLabel, QComboBox, 
-                             QMessageBox)
+                             QMessageBox,QDialog)
 from PyQt5.QtCore import Qt
 from config.database import get_db
 from repositories.inventory_repository import InventoryRepository

@@ -5,7 +5,6 @@ from config.database import Base
 
 class Order(Base):
     __tablename__ = "orders"
-    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     customer_name = Column(String(100), nullable=False)
@@ -15,23 +14,16 @@ class Order(Base):
     notes = Column(Text)
     total = Column(DECIMAL(10, 2), default=0)
     
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
-    
-    def formatted_created(self):
-        return self.created.strftime("%Y-%m-%d %H:%M") if self.created else ""
+    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan", lazy="select")
 
 class OrderItem(Base):
     __tablename__ = "order_items"
     
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"))
-    menu_item_id = Column(Integer, ForeignKey("menu.id"))
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"))  # ОБНОВЛЕНО: menu -> menu_items
     quantity = Column(Integer, default=1)
     price = Column(DECIMAL(10, 2))
     
-    order = relationship("Order", back_populates="items")
-    menu_item = relationship("MenuItem")
-
-@property
-def calculated_total(self):
-    return sum(item.quantity * item.price for item in self.items)
+    order = relationship("Order", back_populates="items", lazy="select")
+    menu_item = relationship("MenuItem", lazy="select")
