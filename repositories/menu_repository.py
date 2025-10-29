@@ -1,6 +1,22 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, relationship
+from sqlalchemy import Column, Integer, String, Boolean, DECIMAL, Text
 from models.menu_model import MenuItem
 from typing import List, Optional
+
+from config.database import Base
+
+class MenuItem(Base):
+    __tablename__ = "menu"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    category = Column(String(50))
+    price = Column(DECIMAL(10, 2))
+    available = Column(Boolean, default=True)
+    description = Column(Text)
+    
+    # Связь с рецептами
+    recipe_items = relationship("Recipe", back_populates="menu_item", cascade="all, delete-orphan")
 
 class MenuRepository:
     def __init__(self, db: Session):
