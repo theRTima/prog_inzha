@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from models import Recipe
-from models import MenuItem
-from models import Inventory
+from models.recipe_model import Recipe
+from models.menu_model import MenuItem
+from models.inventory_model import Inventory
 from typing import List, Optional
 
 class RecipeRepository:

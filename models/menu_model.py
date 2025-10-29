@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from config.database import Base
 
 class MenuItem(Base):
-    __tablename__ = "menu"
+    __tablename__ = "menu_items"  # Изменяем название таблицы
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
@@ -12,4 +12,5 @@ class MenuItem(Base):
     available = Column(Boolean, default=True)
     description = Column(Text)
     
-    recipe_items = relationship("Recipe", back_populates="menu_item", cascade="all, delete-orphan")
+    # Используем ленивую загрузку для разрыва циклических импортов
+    recipe_items = relationship("Recipe", back_populates="menu_item", cascade="all, delete-orphan", lazy="select")

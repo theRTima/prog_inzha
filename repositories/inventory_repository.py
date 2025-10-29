@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models import Inventory
+from models.inventory_model import Inventory
 from typing import List, Optional
 
 class InventoryRepository:

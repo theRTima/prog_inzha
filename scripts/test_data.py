@@ -1,22 +1,24 @@
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.database import SessionLocal
 from models.menu_model import MenuItem
 from models.inventory_model import Inventory
-from models.order_model import Order, OrderItem
 from models.recipe_model import Recipe
+from models.order_model import Order, OrderItem
 from sqlalchemy.sql import text
 
 def seed_database():
     db = SessionLocal()
     
     try:
-        # Очищаем таблицы
+        # Очищаем таблицы в правильном порядке
         db.execute(text("DELETE FROM order_items"))
         db.execute(text("DELETE FROM orders"))
-        db.execute(text("DELETE FROM menu"))
+        db.execute(text("DELETE FROM recipes"))
+        db.execute(text("DELETE FROM menu_items"))  # Обновляем название
         db.execute(text("DELETE FROM inventory"))
         
         menu_items = [
