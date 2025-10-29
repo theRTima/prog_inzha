@@ -44,6 +44,27 @@ def seed_database():
         for order in orders:
             db.add(order)
         
+        inventory_items = [
+        Inventory(name="Говядина", category="Мясо", unit="кг", current_stock=15.5, min_stock=5.0, supplier="Мясной двор"),
+        Inventory(name="Куриное филе", category="Мясо", unit="кг", current_stock=8.2, min_stock=3.0, supplier="Птицефабрика"),
+        Inventory(name="Помидоры", category="Овощи", unit="кг", current_stock=12.0, min_stock=4.0, supplier="Овощная база"),
+        Inventory(name="Сыр пармезан", category="Молочные", unit="кг", current_stock=2.5, min_stock=1.0, supplier="Сыроварня"),
+        Inventory(name="Кофе зерновой", category="Бакалея", unit="кг", current_stock=5.0, min_stock=2.0, supplier="Кофейная компания"),
+        ]
+
+        for item in inventory_items:
+            db.add(item)
+        
+        recipes = [
+            Recipe(menu_item_id=1, inventory_id=1, quantity_required=0.3),  # Стейк: 300г говядины
+            Recipe(menu_item_id=2, inventory_id=2, quantity_required=0.2),  # Цезарь: 200г курицы
+            Recipe(menu_item_id=2, inventory_id=4, quantity_required=0.05), # Цезарь: 50г пармезана
+            Recipe(menu_item_id=5, inventory_id=5, quantity_required=0.02), # Кофе: 20г зерен
+        ]
+
+        for recipe in recipes:
+            db.add(recipe)
+        
         db.commit()
         print("Тестовые данные успешно добавлены")
         

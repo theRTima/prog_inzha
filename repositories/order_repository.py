@@ -48,6 +48,11 @@ class OrderRepository:
         if not menu_item:
             raise ValueError("Блюдо не найдено")
         
+        # Проверяем доступность блюда
+        if not menu_item.available:
+            raise ValueError("Блюдо недоступно для заказа")
+        
+        # Создаем позицию заказа
         order_item = OrderItem(
             order_id=order_id,
             menu_item_id=menu_item_id,
