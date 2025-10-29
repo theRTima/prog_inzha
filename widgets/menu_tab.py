@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QLabel, QComboBox, 
-                             QMessageBox)
+                             QMessageBox, QDialog)
 from PyQt5.QtCore import Qt
 from config.database import get_db
 from repositories.menu_repository import MenuRepository
@@ -126,15 +126,27 @@ class MenuTab(QWidget):
         }
         
         dialog = DishEditDialog(self, dish_data)
-        if dialog.exec_() == DishEditDialog.Accepted:
+        if dialog.exec_() == QDialog.Accepted:  # Убедитесь, что используете QDialog.Accepted
             new_dish_data = dialog.get_dish_data()
             try:
                 with get_db() as db:
                     repo = MenuRepository(db)
-                    # Здесь нужно добавить метод update_menu_item в MenuRepository
-                    # repo.update_menu_item(dish_id, **new_dish_data)
-                self.load_menu_items()
-                QMessageBox.information(self, 'Успех', 'Блюдо обновлено')
+                    # ВЫЗЫВАЕМ МЕТОД ОБНОВЛЕНИЯ
+                    updated_item = repo.update_menu_item(
+                        dish_id,
+                        name=new_dish_data['name'],
+                        category=new_dish_data['category'],
+                        price=new_dish_data['price'],
+                        available=new_dish_data['available'],
+                        description=new_dish_data['description']
+                    )
+                    
+                    if updated_item:
+                        self.load_menu_items()
+                        QMessageBox.information(self, 'Успех', 'Блюдо обновлено')
+                    else:
+                        QMessageBox.warning(self, 'Ошибка', 'Блюдо не найдено')
+                        
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось обновить блюдо: {str(e)}')
 
@@ -159,9 +171,9 @@ class MenuTab(QWidget):
                 with get_db() as db:
                     repo = MenuRepository(db)
                     if repo.delete_menu_item(dish_id):
-                         QMessageBox.information(self, 'Успех', 'Блюдо удалено')
-                         self.load_menu_items()
+                        QMessageBox.information(self, 'Успех', 'Блюдо удалено')
+                        self.load_menu_items()
                     else:
-                         QMessageBox.warning(self, 'Ошибка', 'Блюдо не найдено')
+                        QMessageBox.warning(self, 'Ошибка', 'Блюдо не найдено')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить блюдо: {str(e)}')
