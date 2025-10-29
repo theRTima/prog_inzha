@@ -6,6 +6,7 @@ from config.database import SessionLocal
 from models.menu_model import MenuItem
 from models.inventory_model import Inventory
 from models.order_model import Order, OrderItem
+from models.recipe_model import Recipe
 from sqlalchemy.sql import text
 
 def seed_database():

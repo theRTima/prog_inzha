@@ -6,6 +6,7 @@ from config.database import engine, Base
 from models.order_model import Order
 from models.menu_model import MenuItem
 from models.inventory_model import Inventory
+from models.recipe_model import Recipe
 
 def reset_database():
     # Удаляем все таблицы
