@@ -23,7 +23,7 @@ class MenuTab(QWidget):
         btn_add_dish = QPushButton('Добавить блюдо')
         btn_edit_dish = QPushButton('Редактировать')
         btn_delete_dish = QPushButton('Удалить')
-        btn_view_recipe = QPushButton('Рецепт')
+        btn_view_recipe = QPushButton('Технологическая карта')
         self.menu_filter = QComboBox()
         self.menu_filter.addItems(['Все категории', 'Горячие блюда', 'Салаты', 'Супы', 'Десерты', 'Напитки'])
 
