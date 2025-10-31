@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from contextlib import contextmanager
 
-DATABASE_URL = "postgresql://restaurant_user:restaurant_pass@localhost:5433/restaurant_db"
+DATABASE_URL = "postgresql://restaurant_user:restaurant_pass@localhost:5434/restaurant_db"
 
 Base = declarative_base()
 
