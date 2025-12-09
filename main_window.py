@@ -1,40 +1,73 @@
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget, QLabel)
+from PyQt5.QtWidgets import (QMainWindow, QTabWidget, QWidget, QVBoxLayout, 
+                             QMessageBox, QStatusBar)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-
 from widgets.order_tab import OrderTab
 from widgets.menu_tab import MenuTab
 from widgets.inventory_tab import InventoryTab
 from widgets.reports_tab import ReportsTab
 
-class RestaurantOrderSystem(QMainWindow):
-    def __init__(self):
+class MainWindow(QMainWindow):
+    def __init__(self, role='Владелец'):
         super().__init__()
+        self.user_role = role
         self.initUI()
-
+        
     def initUI(self):
-        self.setWindowTitle('Информационная система ресторана')
+        self.setWindowTitle(f'Система управления рестораном - {self.user_role}')
         self.setGeometry(100, 100, 1200, 700)
-
+        
+        # Создаем центральный виджет и layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-
         main_layout = QVBoxLayout(central_widget)
-
-        title_label = QLabel('Система управления заказами навынос')
-        title_label.setFont(QFont('Arial', 16, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
-
-        tab_widget = QTabWidget()
-        main_layout.addWidget(tab_widget)
-
-        self.order_tab = OrderTab()
+        
+        # Создаем вкладки
+        self.tab_widget = QTabWidget()
+        
+        # Создаем экземпляры вкладок
+        self.orders_tab = OrderTab()
         self.menu_tab = MenuTab()
         self.inventory_tab = InventoryTab()
         self.reports_tab = ReportsTab()
-
-        tab_widget.addTab(self.order_tab, 'Заказы')
-        tab_widget.addTab(self.menu_tab, 'Меню')
-        tab_widget.addTab(self.inventory_tab, 'Склад')
-        tab_widget.addTab(self.reports_tab, 'Отчеты')
+        
+        # Добавляем вкладки в зависимости от роли
+        if self.user_role == 'Владелец':
+            self.tab_widget.addTab(self.orders_tab, "Заказы")
+            self.tab_widget.addTab(self.menu_tab, "Меню")
+            self.tab_widget.addTab(self.inventory_tab, "Склад")
+            self.tab_widget.addTab(self.reports_tab, "Отчеты")
+        
+        elif self.user_role == 'Официант':
+            self.tab_widget.addTab(self.orders_tab, "Заказы")
+            self.tab_widget.addTab(self.menu_tab, "Меню")
+            
+        elif self.user_role == 'Складовщик':
+            self.tab_widget.addTab(self.inventory_tab, "Склад")
+            self.tab_widget.addTab(self.menu_tab, "Меню")
+            
+        elif self.user_role == 'Бухгалтерия':
+            self.tab_widget.addTab(self.reports_tab, "Отчеты")
+        
+        else:
+            QMessageBox.warning(self, 'Ошибка', 'Неизвестная роль пользователя')
+            return
+        
+        main_layout.addWidget(self.tab_widget)
+        
+        # Создаем статус бар
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage(f'Вы вошли как: {self.user_role}')
+        
+        # Устанавливаем минимальные размеры
+        self.setMinimumSize(800, 600)
+        
+    def closeEvent(self, event):
+        """Обработчик закрытия окна"""
+        reply = QMessageBox.question(self, 'Подтверждение', 
+                                     'Вы уверены, что хотите выйти?',
+                                     QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            event.accept()
+        else:
+            event.ignore()
