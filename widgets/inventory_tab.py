@@ -6,6 +6,14 @@ from config.database import get_db
 from repositories.inventory_repository import InventoryRepository
 from widgets.inventory_edit_dialog import InventoryEditDialog
 
+class NumericTableWidgetItem(QTableWidgetItem):
+    """Элемент таблицы для числовой сортировки"""
+    def __lt__(self, other):
+        try:
+            return float(self.text()) < float(other.text())
+        except ValueError:
+            return super().__lt__(other)
+
 class InventoryTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -49,7 +57,6 @@ class InventoryTab(QWidget):
 
     def load_inventory(self):
         try:
-            # Сохраняем сортировку
             sort_column = self.inventory_table.horizontalHeader().sortIndicatorSection()
             sort_order = self.inventory_table.horizontalHeader().sortIndicatorOrder()
             
@@ -61,16 +68,15 @@ class InventoryTab(QWidget):
                 
                 self.inventory_table.setRowCount(len(inventory_items))
                 for row, item in enumerate(inventory_items):
-                    self.inventory_table.setItem(row, 0, QTableWidgetItem(str(item.id)))
+                    self.inventory_table.setItem(row, 0, NumericTableWidgetItem(str(item.id)))
                     self.inventory_table.setItem(row, 1, QTableWidgetItem(item.name))
                     self.inventory_table.setItem(row, 2, QTableWidgetItem(item.category))
                     self.inventory_table.setItem(row, 3, QTableWidgetItem(item.unit))
-                    self.inventory_table.setItem(row, 4, QTableWidgetItem(str(item.current_stock)))
-                    self.inventory_table.setItem(row, 5, QTableWidgetItem(str(item.min_stock)))
+                    self.inventory_table.setItem(row, 4, NumericTableWidgetItem(str(item.current_stock)))
+                    self.inventory_table.setItem(row, 5, NumericTableWidgetItem(str(item.min_stock)))
                     self.inventory_table.setItem(row, 6, QTableWidgetItem(item.supplier))
             
             self.inventory_table.setSortingEnabled(True)
-            # Восстанавливаем сортировку
             self.inventory_table.sortByColumn(sort_column, sort_order)
             
         except Exception as e:
@@ -97,18 +103,32 @@ class InventoryTab(QWidget):
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось добавить материал: {str(e)}')
 
     def edit_inventory_item(self):
-        current_row = self.inventory_table.currentRow()
-        if current_row < 0:
+        selected = self.inventory_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите материал для редактирования')
             return
         
-        item_id = int(self.inventory_table.item(current_row, 0).text())
-        item_name = self.inventory_table.item(current_row, 1).text()
-        item_category = self.inventory_table.item(current_row, 2).text()
-        item_unit = self.inventory_table.item(current_row, 3).text()
-        item_current_stock = float(self.inventory_table.item(current_row, 4).text())
-        item_min_stock = float(self.inventory_table.item(current_row, 5).text())
-        item_supplier = self.inventory_table.item(current_row, 6).text()
+        internal_row = selected[0].row()
+        
+        item_id_item = self.inventory_table.item(internal_row, 0)
+        item_name_item = self.inventory_table.item(internal_row, 1)
+        item_category_item = self.inventory_table.item(internal_row, 2)
+        item_unit_item = self.inventory_table.item(internal_row, 3)
+        item_current_stock_item = self.inventory_table.item(internal_row, 4)
+        item_min_stock_item = self.inventory_table.item(internal_row, 5)
+        item_supplier_item = self.inventory_table.item(internal_row, 6)
+        
+        if not all([item_id_item, item_name_item, item_category_item, item_unit_item, 
+                    item_current_stock_item, item_min_stock_item, item_supplier_item]):
+            return
+        
+        item_id = int(item_id_item.text())
+        item_name = item_name_item.text()
+        item_category = item_category_item.text()
+        item_unit = item_unit_item.text()
+        item_current_stock = float(item_current_stock_item.text())
+        item_min_stock = float(item_min_stock_item.text())
+        item_supplier = item_supplier_item.text()
         
         inventory_data = {
             'name': item_name,
@@ -130,18 +150,25 @@ class InventoryTab(QWidget):
                         self.load_inventory()
                         QMessageBox.information(self, 'Успех', 'Материал обновлен')
                     else:
-                        QMessageBox.warning(self, 'Ошибка', 'Материал не найден')
+                        QMessageBox.warning(self, 'Ошибка', 'Материал не найдено')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось обновить материал: {str(e)}')
 
     def delete_inventory_item(self):
-        current_row = self.inventory_table.currentRow()
-        if current_row < 0:
+        selected = self.inventory_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите материал для удаления')
             return
         
-        item_id = int(self.inventory_table.item(current_row, 0).text())
-        item_name = self.inventory_table.item(current_row, 1).text()
+        internal_row = selected[0].row()
+        item_id_item = self.inventory_table.item(internal_row, 0)
+        item_name_item = self.inventory_table.item(internal_row, 1)
+        
+        if not item_id_item or not item_name_item:
+            return
+        
+        item_id = int(item_id_item.text())
+        item_name = item_name_item.text()
         
         reply = QMessageBox.question(
             self, 'Подтверждение', 
@@ -157,7 +184,7 @@ class InventoryTab(QWidget):
                         QMessageBox.information(self, 'Успех', 'Материал удален')
                         self.load_inventory()
                     else:
-                        QMessageBox.warning(self, 'Ошибка', 'Материал не найден')
+                        QMessageBox.warning(self, 'Ошибка', 'Материал не найдено')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить материал: {str(e)}')
 
@@ -171,7 +198,6 @@ class InventoryTab(QWidget):
                     QMessageBox.information(self, 'Информация', 'Нет материалов с низкими остатками')
                     return
                 
-                # Создаем временную таблицу для отображения
                 low_stock_table = QTableWidget()
                 low_stock_table.setColumnCount(4)
                 low_stock_table.setHorizontalHeaderLabels([
@@ -181,11 +207,10 @@ class InventoryTab(QWidget):
                 low_stock_table.setRowCount(len(low_stock_items))
                 for row, item in enumerate(low_stock_items):
                     low_stock_table.setItem(row, 0, QTableWidgetItem(item.name))
-                    low_stock_table.setItem(row, 1, QTableWidgetItem(str(item.current_stock)))
-                    low_stock_table.setItem(row, 2, QTableWidgetItem(str(item.min_stock)))
-                    low_stock_table.setItem(row, 3, QTableWidgetItem(str(item.min_stock - item.current_stock)))
+                    low_stock_table.setItem(row, 1, NumericTableWidgetItem(str(item.current_stock)))
+                    low_stock_table.setItem(row, 2, NumericTableWidgetItem(str(item.min_stock)))
+                    low_stock_table.setItem(row, 3, NumericTableWidgetItem(str(item.min_stock - item.current_stock)))
                 
-                # Показываем диалог с таблицей
                 dialog = QDialog(self)
                 dialog.setWindowTitle('Материалы с низкими остатками')
                 dialog.resize(500, 300)

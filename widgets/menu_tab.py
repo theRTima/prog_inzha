@@ -8,6 +8,14 @@ from repositories.menu_repository import MenuRepository
 from widgets.dish_edit_dialog import DishEditDialog
 from widgets.recipe_edit_dialog import RecipeEditDialog
 
+class NumericTableWidgetItem(QTableWidgetItem):
+    """Элемент таблицы для числовой сортировки"""
+    def __lt__(self, other):
+        try:
+            return float(self.text()) < float(other.text())
+        except ValueError:
+            return super().__lt__(other)
+
 class MenuTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -57,7 +65,6 @@ class MenuTab(QWidget):
     def load_menu_items(self):
         """Загружает блюда из базы данных с учетом фильтра"""
         try:
-            # Сохраняем сортировку
             sort_column = self.menu_table.horizontalHeader().sortIndicatorSection()
             sort_order = self.menu_table.horizontalHeader().sortIndicatorOrder()
             
@@ -74,15 +81,14 @@ class MenuTab(QWidget):
                 
                 self.menu_table.setRowCount(len(menu_items))
                 for row, item in enumerate(menu_items):
-                    self.menu_table.setItem(row, 0, QTableWidgetItem(str(item.id)))
+                    self.menu_table.setItem(row, 0, NumericTableWidgetItem(str(item.id)))
                     self.menu_table.setItem(row, 1, QTableWidgetItem(item.name))
                     self.menu_table.setItem(row, 2, QTableWidgetItem(item.category))
-                    self.menu_table.setItem(row, 3, QTableWidgetItem(str(item.price)))
+                    self.menu_table.setItem(row, 3, NumericTableWidgetItem(str(item.price)))
                     self.menu_table.setItem(row, 4, QTableWidgetItem('Да' if item.available else 'Нет'))
                     self.menu_table.setItem(row, 5, QTableWidgetItem(item.description or ''))
             
             self.menu_table.setSortingEnabled(True)
-            # Восстанавливаем сортировку
             self.menu_table.sortByColumn(sort_column, sort_order)
             
         except Exception as e:
@@ -91,7 +97,7 @@ class MenuTab(QWidget):
     def add_dish(self):
         """Добавление нового блюда"""
         dialog = DishEditDialog(self)
-        if dialog.exec_() == DishEditDialog.Accepted:
+        if dialog.exec_() == QDialog.Accepted:
             dish_data = dialog.get_dish_data()
             try:
                 with get_db() as db:
@@ -110,17 +116,29 @@ class MenuTab(QWidget):
 
     def edit_dish(self):
         """Редактирование выбранного блюда"""
-        current_row = self.menu_table.currentRow()
-        if current_row < 0:
+        selected = self.menu_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите блюдо для редактирования')
             return
         
-        dish_id = int(self.menu_table.item(current_row, 0).text())
-        dish_name = self.menu_table.item(current_row, 1).text()
-        dish_category = self.menu_table.item(current_row, 2).text()
-        dish_price = float(self.menu_table.item(current_row, 3).text())
-        dish_available = self.menu_table.item(current_row, 4).text() == 'Да'
-        dish_description = self.menu_table.item(current_row, 5).text()
+        internal_row = selected[0].row()
+        
+        dish_id_item = self.menu_table.item(internal_row, 0)
+        dish_name_item = self.menu_table.item(internal_row, 1)
+        dish_category_item = self.menu_table.item(internal_row, 2)
+        dish_price_item = self.menu_table.item(internal_row, 3)
+        dish_available_item = self.menu_table.item(internal_row, 4)
+        dish_description_item = self.menu_table.item(internal_row, 5)
+        
+        if not all([dish_id_item, dish_name_item, dish_category_item, dish_price_item, dish_available_item]):
+            return
+        
+        dish_id = int(dish_id_item.text())
+        dish_name = dish_name_item.text()
+        dish_category = dish_category_item.text()
+        dish_price = float(dish_price_item.text())
+        dish_available = dish_available_item.text() == 'Да'
+        dish_description = dish_description_item.text() if dish_description_item else ''
         
         dish_data = {
             'name': dish_name,
@@ -131,12 +149,11 @@ class MenuTab(QWidget):
         }
         
         dialog = DishEditDialog(self, dish_data)
-        if dialog.exec_() == QDialog.Accepted:  # Убедитесь, что используете QDialog.Accepted
+        if dialog.exec_() == QDialog.Accepted:
             new_dish_data = dialog.get_dish_data()
             try:
                 with get_db() as db:
                     repo = MenuRepository(db)
-                    # ВЫЗЫВАЕМ МЕТОД ОБНОВЛЕНИЯ
                     updated_item = repo.update_menu_item(
                         dish_id,
                         name=new_dish_data['name'],
@@ -157,13 +174,20 @@ class MenuTab(QWidget):
 
     def delete_dish(self):
         """Удаление выбранного блюда"""
-        current_row = self.menu_table.currentRow()
-        if current_row < 0:
+        selected = self.menu_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите блюдо для удаления')
             return
         
-        dish_id = int(self.menu_table.item(current_row, 0).text())
-        dish_name = self.menu_table.item(current_row, 1).text()
+        internal_row = selected[0].row()
+        dish_id_item = self.menu_table.item(internal_row, 0)
+        dish_name_item = self.menu_table.item(internal_row, 1)
+        
+        if not dish_id_item or not dish_name_item:
+            return
+        
+        dish_id = int(dish_id_item.text())
+        dish_name = dish_name_item.text()
         
         reply = QMessageBox.question(
             self, 'Подтверждение', 
@@ -184,15 +208,21 @@ class MenuTab(QWidget):
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить блюдо: {str(e)}')
     
     def view_recipe(self):
-        current_row = self.menu_table.currentRow()
-        if current_row < 0:
+        selected = self.menu_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите блюдо для просмотра рецепта')
             return
         
-        menu_item_id = int(self.menu_table.item(current_row, 0).text())
-        menu_item_name = self.menu_table.item(current_row, 1).text()
+        internal_row = selected[0].row()
+        menu_item_id_item = self.menu_table.item(internal_row, 0)
+        menu_item_name_item = self.menu_table.item(internal_row, 1)
+        
+        if not menu_item_id_item or not menu_item_name_item:
+            return
+        
+        menu_item_id = int(menu_item_id_item.text())
+        menu_item_name = menu_item_name_item.text()
         
         dialog = RecipeEditDialog(self, menu_item_id, menu_item_name)
         dialog.exec_()
-        # После закрытия диалога обновляем таблицу меню
         self.load_menu_items()

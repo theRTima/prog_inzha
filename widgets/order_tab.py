@@ -9,6 +9,14 @@ from repositories.order_repository import OrderRepository
 from repositories.menu_repository import MenuRepository
 from widgets.dish_selection_dialog import DishSelectionDialog
 
+class NumericTableWidgetItem(QTableWidgetItem):
+    """Элемент таблицы для числовой сортировки"""
+    def __lt__(self, other):
+        try:
+            return float(self.text()) < float(other.text())
+        except ValueError:
+            return super().__lt__(other)
+
 class OrderTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -48,8 +56,6 @@ class OrderTab(QWidget):
         self.orders_table.setHorizontalHeaderLabels([
             'ID', 'Клиент', 'Телефон', 'Сумма', 'Статус', 'Время заказа'
         ])
-
-        #ДЛЯ СОРТИРОВКИ ТАБЛИЦЫ
         self.orders_table.setSortingEnabled(True)
 
         orders_layout.addWidget(self.orders_table)
@@ -86,10 +92,11 @@ class OrderTab(QWidget):
 
         # Таблица позиций заказа
         self.order_items_table = QTableWidget()
-        self.order_items_table.setColumnCount(4)
+        self.order_items_table.setColumnCount(5)
         self.order_items_table.setHorizontalHeaderLabels([
-            'Блюдо', 'Название', 'Количество', 'Цена'
+            'ID', 'Блюдо', 'Количество', 'Цена', 'Сумма'
         ])
+        self.order_items_table.setSortingEnabled(True)
         order_details_layout.addWidget(QLabel('Позиции заказа:'))
         order_details_layout.addWidget(self.order_items_table)
 
@@ -123,11 +130,9 @@ class OrderTab(QWidget):
     def load_orders_from_db(self):
         """Загружает заказы из базы данных"""
         try:
-            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - НАЧАЛО
             sort_column = self.orders_table.horizontalHeader().sortIndicatorSection()
             sort_order = self.orders_table.horizontalHeader().sortIndicatorOrder()
             self.orders_table.setSortingEnabled(False)
-            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - НАЧАЛО
             
             with get_db() as db:
                 repo = OrderRepository(db)
@@ -135,17 +140,15 @@ class OrderTab(QWidget):
                 
                 self.orders_table.setRowCount(len(orders))
                 for row, order in enumerate(orders):
-                    self.orders_table.setItem(row, 0, QTableWidgetItem(str(order.id)))
+                    self.orders_table.setItem(row, 0, NumericTableWidgetItem(str(order.id)))
                     self.orders_table.setItem(row, 1, QTableWidgetItem(order.customer_name))
                     self.orders_table.setItem(row, 2, QTableWidgetItem(order.phone or ""))
-                    self.orders_table.setItem(row, 3, QTableWidgetItem(str(order.total)))
+                    self.orders_table.setItem(row, 3, NumericTableWidgetItem(str(order.total)))
                     self.orders_table.setItem(row, 4, QTableWidgetItem(order.status))
                     self.orders_table.setItem(row, 5, QTableWidgetItem(order.formatted_created))
-                
-            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - КОНЕЦ
+            
             self.orders_table.setSortingEnabled(True)
             self.orders_table.sortByColumn(sort_column, sort_order)
-            #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - КОНЕЦ
 
         except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить заказы: {str(e)}')
@@ -174,7 +177,6 @@ class OrderTab(QWidget):
                 repo = OrderRepository(db)
                 
                 if self.current_order_id:
-                    # Обновление существующего заказа
                     order = repo.update_order(
                         self.current_order_id,
                         customer_name=customer_name,
@@ -185,7 +187,6 @@ class OrderTab(QWidget):
                     if order:
                         QMessageBox.information(self, 'Успех', f'Заказ #{order.id} обновлен')
                 else:
-                    # Создание нового заказа
                     order = repo.create_order(
                         customer_name=customer_name,
                         phone=self.order_phone.text(),
@@ -195,7 +196,6 @@ class OrderTab(QWidget):
                     self.order_id.setText(str(order.id))
                     QMessageBox.information(self, 'Успех', f'Создан новый заказ #{order.id}')
                 
-                # Обновляем таблицу заказов
                 self.load_orders_from_db()
                 
         except Exception as e:
@@ -203,75 +203,69 @@ class OrderTab(QWidget):
 
     def delete_order(self):
         """Удаление выбранного заказа"""
-        if not self.current_order_id:
+        selected = self.orders_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите заказ для удаления')
             return
         
+        internal_row = selected[0].row()
+        item = self.orders_table.item(internal_row, 0)
+        if not item:
+            return
+        
+        order_id = int(item.text())
+        
         reply = QMessageBox.question(self, 'Подтверждение', 
-                                   f'Вы уверены, что хотите удалить заказ #{self.current_order_id}?',
+                                   f'Вы уверены, что хотите удалить заказ #{order_id}?',
                                    QMessageBox.Yes | QMessageBox.No)
         
         if reply == QMessageBox.Yes:
             try:
                 with get_db() as db:
                     repo = OrderRepository(db)
-                    if repo.delete_order(self.current_order_id):
+                    if repo.delete_order(order_id):
                         QMessageBox.information(self, 'Успех', 'Заказ удален')
-                        self.new_order()  # Очищаем форму
-                        self.load_orders_from_db()  # Обновляем таблицу
+                        self.new_order()
+                        self.load_orders_from_db()
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить заказ: {str(e)}')
 
     def on_order_selected(self):
         """Обработчик выбора заказа в таблице"""
-        current_row = self.orders_table.currentRow()
-        if current_row >= 0:
-            try:
-                order_id = int(self.orders_table.item(current_row, 0).text())
-                self.current_order_id = order_id
+        selected = self.orders_table.selectedIndexes()
+        if not selected:
+            return
+        
+        internal_row = selected[0].row()
+        item = self.orders_table.item(internal_row, 0)
+        if not item:
+            return
+        
+        try:
+            order_id = int(item.text())
+            self.current_order_id = order_id
+            
+            with get_db() as db:
+                repo = OrderRepository(db)
+                order = repo.get_order(order_id)
                 
-                with get_db() as db:
-                    repo = OrderRepository(db)
-                    order = repo.get_order(order_id)
+                if order:
+                    self.order_id.setText(str(order.id))
+                    self.order_customer.setText(order.customer_name)
+                    self.order_phone.setText(order.phone or "")
+                    self.order_notes.setPlainText(order.notes or "")
                     
-                    if order:
-                        self.order_id.setText(str(order.id))
-                        self.order_customer.setText(order.customer_name)
-                        self.order_phone.setText(order.phone or "")
-                        self.order_notes.setPlainText(order.notes or "")
-                        
-                        # Устанавливаем статус
-                        index = self.order_status.findText(order.status)
-                        if index >= 0:
-                            self.order_status.setCurrentIndex(index)
-                        
-                        # Устанавливаем время создания
-                        if order.created:
-                            self.order_created.setDateTime(order.created)
-                        
-                        # Загружаем позиции заказа
-                        self.load_order_items(order_id)
-                        
-            except Exception as e:
-                QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить данные заказа: {str(e)}')
-
-    def load_order_items(self, order):
-        """Загружает позиции выбранного заказа"""
-        self.order_items_table.setRowCount(len(order.items))
-        for row, item in enumerate(order.items):
-            dish_name = item.menu_item.name if item.menu_item else "Неизвестно"
-            self.order_items_table.setItem(row, 0, QTableWidgetItem(dish_name))
-            self.order_items_table.setItem(row, 1, QTableWidgetItem(str(item.quantity)))
-            self.order_items_table.setItem(row, 2, QTableWidgetItem(str(item.price)))
-            self.order_items_table.setItem(row, 3, QTableWidgetItem(str(item.quantity * item.price)))
-    
-    def setup_items_table(self):
-        """Настройка таблицы позиций заказа"""
-        self.order_items_table.setColumnCount(5)
-        self.order_items_table.setHorizontalHeaderLabels([
-            'ID', 'Блюдо', 'Количество', 'Цена', 'Сумма'
-        ])
-        self.order_items_table.setSortingEnabled(True)
+                    index = self.order_status.findText(order.status)
+                    if index >= 0:
+                        self.order_status.setCurrentIndex(index)
+                    
+                    if order.created:
+                        self.order_created.setDateTime(order.created)
+                    
+                    self.load_order_items(order_id)
+                    
+        except Exception as e:
+            QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить данные заказа: {str(e)}')
 
     def add_dish_to_order(self):
         """Добавление блюда в заказ"""
@@ -292,7 +286,6 @@ class OrderTab(QWidget):
                             dish_data['quantity']
                         )
                         
-                        # Обновляем отображение позиций заказа
                         self.load_order_items(self.current_order_id)
                         QMessageBox.information(self, 'Успех', 'Блюдо добавлено в заказ')
                         
@@ -301,17 +294,21 @@ class OrderTab(QWidget):
 
     def remove_dish_from_order(self):
         """Удаление блюда из заказа"""
-        current_row = self.order_items_table.currentRow()
-        if current_row < 0:
+        selected = self.order_items_table.selectedIndexes()
+        if not selected:
             QMessageBox.warning(self, 'Ошибка', 'Выберите позицию для удаления')
             return
         
-        order_item_id = int(self.order_items_table.item(current_row, 0).text())
-        dish_name = self.order_items_table.item(current_row, 1).text()
+        internal_row = selected[0].row()
+        item = self.order_items_table.item(internal_row, 0)
+        if not item:
+            return
+        
+        order_item_id = int(item.text())
         
         reply = QMessageBox.question(
             self, 'Подтверждение', 
-            f'Удалить "{dish_name}" из заказа?',
+            f'Удалить позицию #{order_item_id} из заказа?',
             QMessageBox.Yes | QMessageBox.No
         )
         
@@ -334,7 +331,6 @@ class OrderTab(QWidget):
                 order = repo.get_order(order_id)
                 
                 if order:
-                    # Отключаем сортировку на время обновления
                     self.order_items_table.setSortingEnabled(False)
                     
                     self.order_items_table.setRowCount(len(order.items))
@@ -342,16 +338,13 @@ class OrderTab(QWidget):
                         dish_name = item.menu_item.name if item.menu_item else "Неизвестно"
                         item_total = item.quantity * item.price
                         
-                        self.order_items_table.setItem(row, 0, QTableWidgetItem(str(item.id)))
+                        self.order_items_table.setItem(row, 0, NumericTableWidgetItem(str(item.id)))
                         self.order_items_table.setItem(row, 1, QTableWidgetItem(dish_name))
-                        self.order_items_table.setItem(row, 2, QTableWidgetItem(str(item.quantity)))
-                        self.order_items_table.setItem(row, 3, QTableWidgetItem(str(item.price)))
-                        self.order_items_table.setItem(row, 4, QTableWidgetItem(str(item_total)))
+                        self.order_items_table.setItem(row, 2, NumericTableWidgetItem(str(item.quantity)))
+                        self.order_items_table.setItem(row, 3, NumericTableWidgetItem(str(item.price)))
+                        self.order_items_table.setItem(row, 4, NumericTableWidgetItem(str(item_total)))
                     
-                    # Включаем сортировку обратно
                     self.order_items_table.setSortingEnabled(True)
-                    
-                    # Обновляем общую сумму
                     self.order_total.setText(f'Итого: {order.total} руб.')
                     
         except Exception as e:
