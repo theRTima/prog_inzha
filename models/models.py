@@ -49,6 +49,10 @@ class Order(Base):
     total = Column(DECIMAL(10, 2), default=0)
     
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan", lazy="select")
+    
+    @property
+    def formatted_created(self):
+        return self.created.strftime("%d.%m.%Y %H:%M") if self.created else ""
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -61,7 +65,3 @@ class OrderItem(Base):
     
     order = relationship("Order", back_populates="items", lazy="select")
     menu_item = relationship("MenuItem", lazy="select")
-
-@property
-def formatted_created(self):
-    return self.created.strftime("%d.%m.%Y%H:%M") if self.created else None
