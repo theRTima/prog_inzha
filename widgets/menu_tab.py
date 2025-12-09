@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, 
                              QTableWidgetItem, QPushButton, QLabel, QComboBox, 
-                             QMessageBox, QDialog)
+                             QMessageBox, QDialog, QSplitter, QGroupBox)
 from PyQt5.QtCore import Qt
 
 from config.database import get_db
 from repositories.menu_repository import MenuRepository
+from repositories.recipe_repository import RecipeRepository
 from widgets.dish_edit_dialog import DishEditDialog
 from widgets.recipe_edit_dialog import RecipeEditDialog
 
@@ -19,48 +20,76 @@ class NumericTableWidgetItem(QTableWidgetItem):
 class MenuTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.current_dish_id = None
         self.initUI()
         self.load_menu_items()
 
     def initUI(self):
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
 
         # Верхняя панель
         top_panel = QHBoxLayout()
 
         btn_add_dish = QPushButton('Добавить блюдо')
         btn_edit_dish = QPushButton('Редактировать')
+        btn_edit_recipe = QPushButton('Редактировать рецепт')  # НОВАЯ КНОПКА
         btn_delete_dish = QPushButton('Удалить')
-        btn_view_recipe = QPushButton('Технологическая карта')
         self.menu_filter = QComboBox()
         self.menu_filter.addItems(['Все категории', 'Горячие блюда', 'Салаты', 'Супы', 'Десерты', 'Напитки'])
 
         top_panel.addWidget(btn_add_dish)
         top_panel.addWidget(btn_edit_dish)
+        top_panel.addWidget(btn_edit_recipe)  # Добавляем новую кнопку
         top_panel.addWidget(btn_delete_dish)
-        top_panel.addWidget(btn_view_recipe)
         top_panel.addStretch()
         top_panel.addWidget(QLabel('Фильтр:'))
         top_panel.addWidget(self.menu_filter)
 
-        layout.addLayout(top_panel)
+        main_layout.addLayout(top_panel)
 
-        # Таблица меню
+        # Сплиттер для разделения меню и рецепта
+        splitter = QSplitter(Qt.Vertical)
+
+        # Верхняя часть - меню
+        menu_group = QGroupBox('Меню')
+        menu_layout = QVBoxLayout(menu_group)
+        
         self.menu_table = QTableWidget()
         self.menu_table.setColumnCount(6)
         self.menu_table.setHorizontalHeaderLabels([
             'ID', 'Название', 'Категория', 'Цена', 'Доступно', 'Описание'
         ])
         self.menu_table.setSortingEnabled(True)
+        menu_layout.addWidget(self.menu_table)
+        
+        splitter.addWidget(menu_group)
 
-        layout.addWidget(self.menu_table)
+        # Нижняя часть - рецепт выбранного блюда
+        recipe_group = QGroupBox('Рецепт выбранного блюда')
+        recipe_layout = QVBoxLayout(recipe_group)
+        
+        self.recipe_table = QTableWidget()
+        self.recipe_table.setColumnCount(5)
+        self.recipe_table.setHorizontalHeaderLabels([
+            'Ингредиент', 'Количество', 'Ед. изм.', 'Текущий остаток', 'Достаточно'
+        ])
+        self.recipe_table.setSortingEnabled(True)
+        recipe_layout.addWidget(self.recipe_table)
+        
+        splitter.addWidget(recipe_group)
+        
+        # Устанавливаем начальные размеры
+        splitter.setSizes([300, 200])
+
+        main_layout.addWidget(splitter)
 
         # Подключение сигналов
         btn_add_dish.clicked.connect(self.add_dish)
         btn_edit_dish.clicked.connect(self.edit_dish)
+        btn_edit_recipe.clicked.connect(self.open_recipe_editor)  # НОВЫЙ ОБРАБОТЧИК
         btn_delete_dish.clicked.connect(self.delete_dish)
-        btn_view_recipe.clicked.connect(self.view_recipe)
         self.menu_filter.currentTextChanged.connect(self.load_menu_items)
+        self.menu_table.itemSelectionChanged.connect(self.load_selected_recipe)
 
     def load_menu_items(self):
         """Загружает блюда из базы данных с учетом фильтра"""
@@ -93,6 +122,42 @@ class MenuTab(QWidget):
             
         except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить меню: {str(e)}')
+
+    def load_selected_recipe(self):
+        """Загружает рецепт выбранного блюда"""
+        selected = self.menu_table.selectedIndexes()
+        if not selected:
+            return
+        
+        internal_row = selected[0].row()
+        item = self.menu_table.item(internal_row, 0)
+        if not item:
+            return
+        
+        try:
+            menu_item_id = int(item.text())
+            self.current_dish_id = menu_item_id
+            
+            with get_db() as db:
+                recipe_repo = RecipeRepository(db)
+                recipe_items = recipe_repo.get_recipe_for_menu_item(menu_item_id)
+                
+                self.recipe_table.setRowCount(len(recipe_items))
+                for row, recipe_item in enumerate(recipe_items):
+                    inventory_item = recipe_item.inventory_item
+                    required = recipe_item.quantity_required
+                    available = inventory_item.current_stock
+                    enough = available >= required
+                    
+                    self.recipe_table.setItem(row, 0, QTableWidgetItem(inventory_item.name))
+                    self.recipe_table.setItem(row, 1, NumericTableWidgetItem(str(required)))
+                    self.recipe_table.setItem(row, 2, QTableWidgetItem(inventory_item.unit))
+                    self.recipe_table.setItem(row, 3, NumericTableWidgetItem(str(available)))
+                    self.recipe_table.setItem(row, 4, QTableWidgetItem('Да' if enough else 'Нет'))
+                    
+        except Exception as e:
+            print(f"Ошибка загрузки рецепта: {e}")
+            self.recipe_table.setRowCount(0)
 
     def add_dish(self):
         """Добавление нового блюда"""
@@ -202,15 +267,17 @@ class MenuTab(QWidget):
                     if repo.delete_menu_item(dish_id):
                         QMessageBox.information(self, 'Успех', 'Блюдо удалено')
                         self.load_menu_items()
+                        self.recipe_table.setRowCount(0)  # Очищаем рецепт
                     else:
                         QMessageBox.warning(self, 'Ошибка', 'Блюдо не найдено')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить блюдо: {str(e)}')
-    
-    def view_recipe(self):
+
+    def open_recipe_editor(self):
+        """Открывает диалог редактирования рецепта для выбранного блюда"""
         selected = self.menu_table.selectedIndexes()
         if not selected:
-            QMessageBox.warning(self, 'Ошибка', 'Выберите блюдо для просмотра рецепта')
+            QMessageBox.warning(self, 'Ошибка', 'Выберите блюдо для редактирования рецепта')
             return
         
         internal_row = selected[0].row()
@@ -223,6 +290,9 @@ class MenuTab(QWidget):
         menu_item_id = int(menu_item_id_item.text())
         menu_item_name = menu_item_name_item.text()
         
+        # Открываем диалог редактирования рецепта
         dialog = RecipeEditDialog(self, menu_item_id, menu_item_name)
-        dialog.exec_()
-        self.load_menu_items()
+        if dialog.exec_() == QDialog.Accepted:
+            # После закрытия диалога обновляем отображение
+            self.load_selected_recipe()  # Обновляем рецепт в нижней части
+            self.load_menu_items()  # Обновляем меню (доступность могла измениться)

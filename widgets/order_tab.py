@@ -280,6 +280,23 @@ class OrderTab(QWidget):
                 try:
                     with get_db() as db:
                         repo = OrderRepository(db)
+                        
+                        # Проверяем доступность ингредиентов перед добавлением
+                        from repositories.recipe_repository import RecipeRepository
+                        recipe_repo = RecipeRepository(db)
+                        
+                        recipe_items = recipe_repo.get_recipe_for_menu_item(dish_data['id'])
+                        for recipe_item in recipe_items:
+                            required = recipe_item.quantity_required * dish_data['quantity']
+                            if recipe_item.inventory_item.current_stock < required:
+                                QMessageBox.warning(
+                                    self, 'Недостаточно ингредиентов',
+                                    f"Недостаточно '{recipe_item.inventory_item.name}' для блюда '{dish_data['name']}'. "
+                                    f"Требуется: {required} {recipe_item.inventory_item.unit}, "
+                                    f"доступно: {recipe_item.inventory_item.current_stock} {recipe_item.inventory_item.unit}"
+                                )
+                                return
+                        
                         order_item = repo.add_order_item(
                             self.current_order_id,
                             dish_data['id'],
