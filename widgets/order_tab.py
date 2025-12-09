@@ -140,7 +140,7 @@ class OrderTab(QWidget):
                     self.orders_table.setItem(row, 2, QTableWidgetItem(order.phone or ""))
                     self.orders_table.setItem(row, 3, QTableWidgetItem(str(order.total)))
                     self.orders_table.setItem(row, 4, QTableWidgetItem(order.status))
-                    self.orders_table.setItem(row, 5, QTableWidgetItem(order.formatted_created()))
+                    self.orders_table.setItem(row, 5, QTableWidgetItem(order.formatted_created))
                 
             #ЧТОБЫ СОРТИРОВКА НЕ ЛОМАЛАСЬ - КОНЕЦ
             self.orders_table.setSortingEnabled(True)

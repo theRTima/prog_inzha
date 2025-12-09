@@ -7,39 +7,28 @@ from widgets.menu_tab import MenuTab
 from widgets.inventory_tab import InventoryTab
 from widgets.reports_tab import ReportsTab
 
-from config.database import Base, engine
-from models.order_model import Order
-from models.menu_model import MenuItem
-from models.inventory_model import Inventory
-
 class RestaurantOrderSystem(QMainWindow):
     def __init__(self):
         super().__init__()
-
-        self.init_database()
         self.initUI()
-    
-    def init_database(self):
-        try:
-            Base.metadata.create_all(bind=engine)
-            print("База данных инициализирована")
-        except Exception as e:
-            print(f"Ошибка инициализации БД: {e}")
 
     def initUI(self):
-        self.setWindowTitle('Информационная система ресторана - Заказы на вынос')
+        self.setWindowTitle('Информационная система ресторана')
         self.setGeometry(100, 100, 1200, 700)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-        
-        # Создаем вкладки
+
+        title_label = QLabel('Система управления заказами навынос')
+        title_label.setFont(QFont('Arial', 16, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+
         tab_widget = QTabWidget()
         main_layout.addWidget(tab_widget)
 
-        # Инициализация вкладок
         self.order_tab = OrderTab()
         self.menu_tab = MenuTab()
         self.inventory_tab = InventoryTab()

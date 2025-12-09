@@ -4,7 +4,7 @@ from main_window import RestaurantOrderSystem
 
 def main():
     app = QApplication(sys.argv)
-    app.setStyle('System')
+    app.setStyle('system')
     
     window = RestaurantOrderSystem()
     window.show()

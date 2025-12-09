@@ -2,9 +2,11 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                              QTableWidgetItem, QPushButton, QLabel, QComboBox, 
                              QMessageBox, QDialog)
 from PyQt5.QtCore import Qt
+
 from config.database import get_db
 from repositories.menu_repository import MenuRepository
 from widgets.dish_edit_dialog import DishEditDialog
+from widgets.recipe_edit_dialog import RecipeEditDialog
 
 class MenuTab(QWidget):
     def __init__(self):
@@ -21,12 +23,14 @@ class MenuTab(QWidget):
         btn_add_dish = QPushButton('Добавить блюдо')
         btn_edit_dish = QPushButton('Редактировать')
         btn_delete_dish = QPushButton('Удалить')
+        btn_view_recipe = QPushButton('Технологическая карта')
         self.menu_filter = QComboBox()
         self.menu_filter.addItems(['Все категории', 'Горячие блюда', 'Салаты', 'Супы', 'Десерты', 'Напитки'])
 
         top_panel.addWidget(btn_add_dish)
         top_panel.addWidget(btn_edit_dish)
         top_panel.addWidget(btn_delete_dish)
+        top_panel.addWidget(btn_view_recipe)
         top_panel.addStretch()
         top_panel.addWidget(QLabel('Фильтр:'))
         top_panel.addWidget(self.menu_filter)
@@ -47,6 +51,7 @@ class MenuTab(QWidget):
         btn_add_dish.clicked.connect(self.add_dish)
         btn_edit_dish.clicked.connect(self.edit_dish)
         btn_delete_dish.clicked.connect(self.delete_dish)
+        btn_view_recipe.clicked.connect(self.view_recipe)
         self.menu_filter.currentTextChanged.connect(self.load_menu_items)
 
     def load_menu_items(self):
@@ -177,3 +182,17 @@ class MenuTab(QWidget):
                         QMessageBox.warning(self, 'Ошибка', 'Блюдо не найдено')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить блюдо: {str(e)}')
+    
+    def view_recipe(self):
+        current_row = self.menu_table.currentRow()
+        if current_row < 0:
+            QMessageBox.warning(self, 'Ошибка', 'Выберите блюдо для просмотра рецепта')
+            return
+        
+        menu_item_id = int(self.menu_table.item(current_row, 0).text())
+        menu_item_name = self.menu_table.item(current_row, 1).text()
+        
+        dialog = RecipeEditDialog(self, menu_item_id, menu_item_name)
+        dialog.exec_()
+        # После закрытия диалога обновляем таблицу меню
+        self.load_menu_items()

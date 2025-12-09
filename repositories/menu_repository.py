@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models.menu_model import MenuItem
+from models.models import MenuItem  # Обновленный импорт
 from typing import List, Optional
 
 class MenuRepository:
@@ -19,7 +19,7 @@ class MenuRepository:
         ).all()
     
     def create_menu_item(self, name: str, category: str, price: float, 
-                    available: bool = True, description: str = "") -> MenuItem:
+                        available: bool = True, description: str = "") -> MenuItem:
         menu_item = MenuItem(
             name=name,
             category=category,
@@ -31,7 +31,7 @@ class MenuRepository:
         self.db.commit()
         self.db.refresh(menu_item)
         return menu_item
-
+    
     def update_menu_item(self, item_id: int, **kwargs) -> Optional[MenuItem]:
         menu_item = self.get_menu_item(item_id)
         if menu_item:
@@ -41,7 +41,7 @@ class MenuRepository:
             self.db.commit()
             self.db.refresh(menu_item)
         return menu_item
-
+    
     def delete_menu_item(self, item_id: int) -> bool:
         menu_item = self.get_menu_item(item_id)
         if menu_item:

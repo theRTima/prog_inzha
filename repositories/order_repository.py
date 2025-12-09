@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
-from models.order_model import Order, OrderItem
-from models.menu_model import MenuItem
+from models.models import Order, OrderItem, MenuItem  # Обновленный импорт
 from typing import List, Optional
 
 class OrderRepository:
@@ -43,10 +42,14 @@ class OrderRepository:
             return True
         return False
     
-    def add_order_item(self, order_id: int, menu_item_id: int, quantity: int) -> OrderItem:
+    def add_order_item(self, order_id: int, menu_item_id: int, quantity: int):
         menu_item = self.db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
         if not menu_item:
             raise ValueError("Блюдо не найдено")
+        
+        # Проверяем доступность блюда
+        if not menu_item.available:
+            raise ValueError("Блюдо недоступно для заказа")
         
         order_item = OrderItem(
             order_id=order_id,
@@ -56,12 +59,10 @@ class OrderRepository:
         )
         self.db.add(order_item)
         self.db.commit()
-        self.db.refresh(order_item)
         
         # Обновляем общую сумму заказа
         self._update_order_total(order_id)
-        return order_item
-
+    
     def remove_order_item(self, order_item_id: int):
         order_item = self.db.query(OrderItem).filter(OrderItem.id == order_item_id).first()
         if order_item:
