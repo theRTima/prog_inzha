@@ -32,14 +32,14 @@ class MenuTab(QWidget):
 
         btn_add_dish = QPushButton('Добавить блюдо')
         btn_edit_dish = QPushButton('Редактировать')
-        btn_edit_recipe = QPushButton('Редактировать рецепт')  # НОВАЯ КНОПКА
+        btn_edit_recipe = QPushButton('Редактировать рецепт')
         btn_delete_dish = QPushButton('Удалить')
         self.menu_filter = QComboBox()
         self.menu_filter.addItems(['Все категории', 'Горячие блюда', 'Салаты', 'Супы', 'Десерты', 'Напитки'])
 
         top_panel.addWidget(btn_add_dish)
         top_panel.addWidget(btn_edit_dish)
-        top_panel.addWidget(btn_edit_recipe)  # Добавляем новую кнопку
+        top_panel.addWidget(btn_edit_recipe)
         top_panel.addWidget(btn_delete_dish)
         top_panel.addStretch()
         top_panel.addWidget(QLabel('Фильтр:'))
@@ -86,7 +86,7 @@ class MenuTab(QWidget):
         # Подключение сигналов
         btn_add_dish.clicked.connect(self.add_dish)
         btn_edit_dish.clicked.connect(self.edit_dish)
-        btn_edit_recipe.clicked.connect(self.open_recipe_editor)  # НОВЫЙ ОБРАБОТЧИК
+        btn_edit_recipe.clicked.connect(self.open_recipe_editor)
         btn_delete_dish.clicked.connect(self.delete_dish)
         self.menu_filter.currentTextChanged.connect(self.load_menu_items)
         self.menu_table.itemSelectionChanged.connect(self.load_selected_recipe)
@@ -267,12 +267,12 @@ class MenuTab(QWidget):
                     if repo.delete_menu_item(dish_id):
                         QMessageBox.information(self, 'Успех', 'Блюдо удалено')
                         self.load_menu_items()
-                        self.recipe_table.setRowCount(0)  # Очищаем рецепт
+                        self.recipe_table.setRowCount(0)
                     else:
                         QMessageBox.warning(self, 'Ошибка', 'Блюдо не найдено')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить блюдо: {str(e)}')
-
+    
     def open_recipe_editor(self):
         """Открывает диалог редактирования рецепта для выбранного блюда"""
         selected = self.menu_table.selectedIndexes()
@@ -290,9 +290,12 @@ class MenuTab(QWidget):
         menu_item_id = int(menu_item_id_item.text())
         menu_item_name = menu_item_name_item.text()
         
-        # Открываем диалог редактирования рецепта
         dialog = RecipeEditDialog(self, menu_item_id, menu_item_name)
         if dialog.exec_() == QDialog.Accepted:
-            # После закрытия диалога обновляем отображение
-            self.load_selected_recipe()  # Обновляем рецепт в нижней части
-            self.load_menu_items()  # Обновляем меню (доступность могла измениться)
+            self.load_selected_recipe()
+            self.load_menu_items()
+
+    def refresh_menu(self):
+        """Публичный метод для обновления данных извне"""
+        self.load_menu_items()
+        self.load_selected_recipe()

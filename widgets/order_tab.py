@@ -18,9 +18,10 @@ class NumericTableWidgetItem(QTableWidgetItem):
             return super().__lt__(other)
 
 class OrderTab(QWidget):
-    def __init__(self):
+    def __init__(self, refresh_callback=None):
         super().__init__()
         self.current_order_id = None
+        self.refresh_callback = refresh_callback
         self.initUI()
         self.load_orders_from_db()
 
@@ -177,16 +178,30 @@ class OrderTab(QWidget):
                 repo = OrderRepository(db)
                 
                 if self.current_order_id:
+                    # Обновление существующего заказа
+                    new_status = self.order_status.currentText()
+                    old_order = repo.get_order(self.current_order_id)
+                    old_status = old_order.status if old_order else "Новый"
+                    
                     order = repo.update_order(
                         self.current_order_id,
                         customer_name=customer_name,
                         phone=self.order_phone.text(),
-                        status=self.order_status.currentText(),
+                        status=new_status,
                         notes=self.order_notes.toPlainText()
                     )
                     if order:
-                        QMessageBox.information(self, 'Успех', f'Заказ #{order.id} обновлен')
+                        if new_status == "Подтвержден" and old_status != "Подтвержден":
+                            QMessageBox.information(self, 'Успех', 
+                                f'Заказ #{order.id} подтвержден.\nИнгредиенты списаны со склада.')
+                            
+                            # Обновляем другие вкладки после списания ингредиентов
+                            if self.refresh_callback:
+                                self.refresh_callback()
+                        else:
+                            QMessageBox.information(self, 'Успех', f'Заказ #{order.id} обновлен')
                 else:
+                    # Создание нового заказа
                     order = repo.create_order(
                         customer_name=customer_name,
                         phone=self.order_phone.text(),
@@ -196,6 +211,7 @@ class OrderTab(QWidget):
                     self.order_id.setText(str(order.id))
                     QMessageBox.information(self, 'Успех', f'Создан новый заказ #{order.id}')
                 
+                # Обновляем таблицу заказов
                 self.load_orders_from_db()
                 
         except Exception as e:
@@ -281,22 +297,53 @@ class OrderTab(QWidget):
                     with get_db() as db:
                         repo = OrderRepository(db)
                         
-                        # Проверяем доступность ингредиентов перед добавлением
+                        # Проверяем доступность блюда в меню
+                        menu_repo = MenuRepository(db)
+                        menu_item = menu_repo.get_menu_item(dish_data['id'])
+                        
+                        if not menu_item:
+                            QMessageBox.critical(self, 'Ошибка', 'Блюдо не найдено в меню')
+                            return
+                        
+                        # Проверяем, доступно ли блюдо
+                        if not menu_item.available:
+                            QMessageBox.warning(
+                                self, 
+                                'Блюдо недоступно',
+                                f'Блюдо "{menu_item.name}" временно недоступно для заказа.\n'
+                                f'Причина: недостаточно ингредиентов на складе.'
+                            )
+                            return
+                        
+                        # Проверяем наличие всех ингредиентов в достаточном количестве
                         from repositories.recipe_repository import RecipeRepository
                         recipe_repo = RecipeRepository(db)
-                        
                         recipe_items = recipe_repo.get_recipe_for_menu_item(dish_data['id'])
+                        
+                        missing_ingredients = []
+                        
                         for recipe_item in recipe_items:
                             required = recipe_item.quantity_required * dish_data['quantity']
-                            if recipe_item.inventory_item.current_stock < required:
-                                QMessageBox.warning(
-                                    self, 'Недостаточно ингредиентов',
-                                    f"Недостаточно '{recipe_item.inventory_item.name}' для блюда '{dish_data['name']}'. "
-                                    f"Требуется: {required} {recipe_item.inventory_item.unit}, "
-                                    f"доступно: {recipe_item.inventory_item.current_stock} {recipe_item.inventory_item.unit}"
+                            available = recipe_item.inventory_item.current_stock
+                            
+                            if available < required:
+                                missing_ingredients.append(
+                                    f"• {recipe_item.inventory_item.name}: "
+                                    f"требуется {required:.3f} {recipe_item.inventory_item.unit}, "
+                                    f"доступно {available:.3f} {recipe_item.inventory_item.unit}"
                                 )
-                                return
                         
+                        if missing_ingredients:
+                            message = (
+                                f"Недостаточно ингредиентов для приготовления блюда '{menu_item.name}'.\n\n"
+                                f"Недостающие ингредиенты:\n"
+                                f"{chr(10).join(missing_ingredients)}\n\n"
+                                f"Пожалуйста, пополните склад или выберите другое блюдо."
+                            )
+                            QMessageBox.warning(self, 'Недостаточно ингредиентов', message)
+                            return
+                        
+                        # Если все проверки пройдены, добавляем блюдо в заказ
                         order_item = repo.add_order_item(
                             self.current_order_id,
                             dish_data['id'],
@@ -306,6 +353,9 @@ class OrderTab(QWidget):
                         self.load_order_items(self.current_order_id)
                         QMessageBox.information(self, 'Успех', 'Блюдо добавлено в заказ')
                         
+                except ValueError as e:
+                    # Ошибка добавления блюда (например, блюдо недоступно)
+                    QMessageBox.warning(self, 'Ошибка', str(e))
                 except Exception as e:
                     QMessageBox.critical(self, 'Ошибка', f'Не удалось добавить блюдо: {str(e)}')
 

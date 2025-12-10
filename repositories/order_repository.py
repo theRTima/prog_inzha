@@ -30,16 +30,23 @@ class OrderRepository:
             old_status = order.status
             new_status = kwargs.get('status')
             
+            # Обновляем поля заказа
             for key, value in kwargs.items():
                 if hasattr(order, key):
                     setattr(order, key, value)
             
+            # Сначала списываем ингредиенты, если статус меняется на "Подтвержден"
+            if new_status == "Подтвержден" and old_status != "Подтвержден":
+                try:
+                    self.deduct_inventory_for_order(order_id)
+                except Exception as e:
+                    # Если списание не удалось, откатываем изменения
+                    self.db.rollback()
+                    raise e
+            
+            # Сохраняем изменения в заказе
             self.db.commit()
             self.db.refresh(order)
-            
-            # Если статус изменился на "Подтвержден", списываем ингредиенты
-            if new_status == "Подтвержден" and old_status != "Подтвержден":
-                self.deduct_inventory_for_order(order_id)
                 
         return order
     
@@ -48,7 +55,10 @@ class OrderRepository:
         if order:
             # Если заказ был подтвержден, возвращаем ингредиенты
             if order.status == "Подтвержден":
-                self.return_inventory_for_order(order_id)
+                try:
+                    self.return_inventory_for_order(order_id)
+                except Exception:
+                    pass  # Игнорируем ошибки при возврате
             
             self.db.delete(order)
             self.db.commit()
@@ -95,7 +105,13 @@ class OrderRepository:
         """Списывает ингредиенты для подтвержденного заказа"""
         order = self.get_order(order_id)
         if not order:
-            return
+            raise ValueError(f"Заказ #{order_id} не найден")
+        
+        if not order.items:
+            raise ValueError(f"В заказе #{order_id} нет позиций")
+        
+        errors = []
+        warnings = []
         
         try:
             for order_item in order.items:
@@ -107,23 +123,49 @@ class OrderRepository:
                 recipe_repo = RecipeRepository(self.db)
                 recipe_items = recipe_repo.get_recipe_for_menu_item(menu_item.id)
                 
+                if not recipe_items:
+                    errors.append(f"У блюда '{menu_item.name}' нет рецепта")
+                    continue
+                
+                dish_errors = []
                 for recipe_item in recipe_items:
                     inventory_item = recipe_item.inventory_item
                     required_quantity = recipe_item.quantity_required * quantity
                     
                     # Проверяем достаточно ли ингредиентов
                     if inventory_item.current_stock < required_quantity:
-                        raise ValueError(
-                            f"Недостаточно ингредиента '{inventory_item.name}'. "
-                            f"Требуется: {required_quantity}, доступно: {inventory_item.current_stock}"
+                        dish_errors.append(
+                            f"  - {inventory_item.name}: требуется {required_quantity:.3f} {inventory_item.unit}, "
+                            f"доступно {inventory_item.current_stock:.3f} {inventory_item.unit}"
                         )
-                    
-                    # Списываем ингредиенты
-                    inventory_item.current_stock -= required_quantity
                 
-                # Обновляем доступность блюда после списания
-                recipe_repo.update_menu_item_availability(menu_item.id)
+                if dish_errors:
+                    errors.append(f"Блюдо: {menu_item.name} (количество: {quantity}):")
+                    errors.extend(dish_errors)
+                else:
+                    # Если ингредиентов достаточно, списываем их
+                    for recipe_item in recipe_items:
+                        inventory_item = recipe_item.inventory_item
+                        required_quantity = recipe_item.quantity_required * quantity
+                        inventory_item.current_stock -= required_quantity
+                    
+                    # Обновляем доступность блюда после списания
+                    recipe_repo.update_menu_item_availability(menu_item.id)
             
+            if errors:
+                error_message = "\n".join(errors)
+                self.db.rollback()  # Откатываем изменения
+                
+                # Формируем понятное сообщение для пользователя
+                full_message = (
+                    f"Невозможно подтвердить заказ #{order_id}.\n\n"
+                    f"Причина: недостаточно ингредиентов для приготовления:\n\n"
+                    f"{error_message}\n\n"
+                    f"Пожалуйста, пополните склад или удалите недоступные блюда из заказа."
+                )
+                raise ValueError(full_message)
+            
+            # Сохраняем изменения
             self.db.commit()
             
         except Exception as e:
