@@ -79,7 +79,6 @@ class DishEditDialog(QDialog):
         self.description_edit.setPlainText(dish_data.get('description', ''))
 
     def validate_and_accept(self):
-        """Проверяет данные и закрывает диалог с принятием"""
         name = self.name_edit.text().strip()
         if not name:
             QMessageBox.warning(self, 'Ошибка', 'Введите название блюда')
@@ -91,13 +90,16 @@ class DishEditDialog(QDialog):
             QMessageBox.warning(self, 'Ошибка', 'Введите цену блюда')
             return
         
+        # Заменяем запятую на точку
+        price_text = price_text.replace(',', '.')
+        
         try:
             price = float(price_text)
             if price <= 0:
                 QMessageBox.warning(self, 'Ошибка', 'Цена должна быть больше 0')
                 return
         except ValueError:
-            QMessageBox.warning(self, 'Ошибка', 'Введите корректную цену')
+            QMessageBox.warning(self, 'Ошибка', 'Введите корректную цену (например: 250.50)')
             return
         
         self.accept()
@@ -105,6 +107,8 @@ class DishEditDialog(QDialog):
     def get_dish_data(self):
         """Возвращает данные блюда из формы"""
         price_text = self.price_edit.text().strip()
+        # Заменяем запятую на точку
+        price_text = price_text.replace(',', '.')
         price = float(price_text) if price_text else 0
         
         return {

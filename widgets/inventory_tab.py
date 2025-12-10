@@ -82,6 +82,10 @@ class InventoryTab(QWidget):
         except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить инвентарь: {str(e)}')
 
+    def refresh_inventory(self):
+        """Публичный метод для обновления данных извне"""
+        self.load_inventory()
+
     def add_inventory_item(self):
         dialog = InventoryEditDialog(self)
         if dialog.exec_() == QDialog.Accepted:

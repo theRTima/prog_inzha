@@ -17,40 +17,53 @@ class RecipeEditDialog(QDialog):
         self.load_inventory()
 
     def initUI(self):
-        self.setWindowTitle(f'Рецепт: {self.menu_item_name}')
+        self.setWindowTitle(f'Редактирование рецепта: {self.menu_item_name}')
         self.setModal(True)
-        self.resize(600, 400)
+        self.resize(600, 500)  # Увеличиваем высоту окна
         
         layout = QVBoxLayout(self)
         
         # Таблица текущего рецепта
-        layout.addWidget(QLabel('Ингредиенты:'))
+        layout.addWidget(QLabel('Текущие ингредиенты:'))
         self.recipe_table = QTableWidget()
         self.recipe_table.setColumnCount(5)
         self.recipe_table.setHorizontalHeaderLabels([
             'ID', 'Ингредиент', 'Количество', 'Ед. изм.', 'Доступно'
         ])
+        self.recipe_table.setSortingEnabled(True)
         layout.addWidget(self.recipe_table)
         
         # Панель добавления нового ингредиента
-        add_layout = QHBoxLayout()
-        add_layout.addWidget(QLabel('Добавить ингредиент:'))
+        add_group = QGroupBox('Добавить новый ингредиент')
+        add_layout = QVBoxLayout(add_group)
+        
+        ingredient_layout = QHBoxLayout()
+        ingredient_layout.addWidget(QLabel('Ингредиент:'))
         
         self.inventory_combo = QComboBox()
-        add_layout.addWidget(self.inventory_combo)
+        ingredient_layout.addWidget(self.inventory_combo)
+        ingredient_layout.addStretch()
+        add_layout.addLayout(ingredient_layout)
         
-        add_layout.addWidget(QLabel('Количество:'))
+        quantity_layout = QHBoxLayout()
+        quantity_layout.addWidget(QLabel('Количество:'))
         self.quantity_edit = QLineEdit()
-        self.quantity_edit.setValidator(QDoubleValidator(0, 1000, 3, self))
         self.quantity_edit.setPlaceholderText("0.000")
-        add_layout.addWidget(self.quantity_edit)
         
-        btn_add = QPushButton('Добавить')
+        # Настраиваем валидатор для чисел с 3 знаками после запятой
+        validator = QDoubleValidator(0, 1000, 3, self)
+        validator.setNotation(QDoubleValidator.StandardNotation)
+        self.quantity_edit.setValidator(validator)
+        
+        quantity_layout.addWidget(self.quantity_edit)
+        quantity_layout.addStretch()
+        add_layout.addLayout(quantity_layout)
+        
+        btn_add = QPushButton('Добавить в рецепт')
         btn_add.clicked.connect(self.add_ingredient)
         add_layout.addWidget(btn_add)
         
-        add_layout.addStretch()
-        layout.addLayout(add_layout)
+        layout.addWidget(add_group)
         
         # Кнопки управления
         button_layout = QHBoxLayout()
@@ -60,9 +73,16 @@ class RecipeEditDialog(QDialog):
         button_layout.addStretch()
         layout.addLayout(button_layout)
         
+        # Информация о блюде
+        info_layout = QHBoxLayout()
+        info_layout.addWidget(QLabel(f'Блюдо: {self.menu_item_name}'))
+        info_layout.addStretch()
+        layout.addLayout(info_layout)
+        
         # Кнопки закрытия
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
     def load_inventory(self):
@@ -92,6 +112,7 @@ class RecipeEditDialog(QDialog):
                     self.recipe_table.setItem(row, 2, QTableWidgetItem(str(item.quantity_required)))
                     self.recipe_table.setItem(row, 3, QTableWidgetItem(item.inventory_item.unit))
                     self.recipe_table.setItem(row, 4, QTableWidgetItem(available_text))
+                    
         except Exception as e:
             QMessageBox.warning(self, 'Ошибка', f'Не удалось загрузить рецепт: {str(e)}')
 
@@ -106,15 +127,35 @@ class RecipeEditDialog(QDialog):
             QMessageBox.warning(self, 'Ошибка', 'Введите количество')
             return
         
+        # Заменяем запятую на точку для корректного преобразования
+        quantity_text = quantity_text.replace(',', '.')
+        
         try:
             quantity = float(quantity_text)
+            if quantity <= 0:
+                QMessageBox.warning(self, 'Ошибка', 'Количество должно быть больше 0')
+                return
+            
+            # Проверяем, что количество не слишком большое
+            if quantity > 1000:
+                QMessageBox.warning(self, 'Ошибка', 'Количество не может превышать 1000')
+                return
+                
         except ValueError:
-            QMessageBox.warning(self, 'Ошибка', 'Введите корректное количество')
+            QMessageBox.warning(self, 'Ошибка', 'Введите корректное количество (например: 0.05)')
             return
         
         try:
             with get_db() as db:
                 repo = RecipeRepository(db)
+                
+                # Проверяем, не добавлен ли уже этот ингредиент
+                existing_items = repo.get_recipe_for_menu_item(self.menu_item_id)
+                for item in existing_items:
+                    if item.inventory_id == inventory_id:
+                        QMessageBox.warning(self, 'Ошибка', 'Этот ингредиент уже добавлен в рецепт')
+                        return
+                
                 repo.add_recipe_item(self.menu_item_id, inventory_id, quantity)
                 # Обновляем доступность блюда
                 repo.update_menu_item_availability(self.menu_item_id)
@@ -122,6 +163,7 @@ class RecipeEditDialog(QDialog):
             self.load_recipe()
             self.quantity_edit.clear()
             QMessageBox.information(self, 'Успех', 'Ингредиент добавлен в рецепт')
+            
         except Exception as e:
             QMessageBox.critical(self, 'Ошибка', f'Не удалось добавить ингредиент: {str(e)}')
 
@@ -153,3 +195,6 @@ class RecipeEditDialog(QDialog):
                         QMessageBox.warning(self, 'Ошибка', 'Ингредиент не найден')
             except Exception as e:
                 QMessageBox.critical(self, 'Ошибка', f'Не удалось удалить ингредиент: {str(e)}')
+
+# Добавляем импорт QGroupBox в начале файла
+from PyQt5.QtWidgets import QGroupBox

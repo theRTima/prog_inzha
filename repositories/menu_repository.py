@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models.models import MenuItem  # Обновленный импорт
+from models.models import MenuItem
 from typing import List, Optional
 
 class MenuRepository:
@@ -7,16 +7,15 @@ class MenuRepository:
         self.db = db
     
     def get_all_menu_items(self) -> List[MenuItem]:
-        return self.db.query(MenuItem).filter(MenuItem.available == True).all()
+        # УБИРАЕМ ФИЛЬТР available == True
+        return self.db.query(MenuItem).all()
     
     def get_menu_item(self, item_id: int) -> Optional[MenuItem]:
         return self.db.query(MenuItem).filter(MenuItem.id == item_id).first()
     
     def get_menu_items_by_category(self, category: str) -> List[MenuItem]:
-        return self.db.query(MenuItem).filter(
-            MenuItem.category == category, 
-            MenuItem.available == True
-        ).all()
+        # УБИРАЕМ ФИЛЬТР available == True
+        return self.db.query(MenuItem).filter(MenuItem.category == category).all()
     
     def create_menu_item(self, name: str, category: str, price: float, 
                         available: bool = True, description: str = "") -> MenuItem:

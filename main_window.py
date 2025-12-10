@@ -24,8 +24,15 @@ class MainWindow(QMainWindow):
         # Создаем вкладки
         self.tab_widget = QTabWidget()
         
-        # Создаем экземпляры вкладок
-        self.orders_tab = OrderTab()
+        # Создаем колбэк для обновления других вкладок
+        def refresh_other_tabs():
+            if hasattr(self, 'inventory_tab'):
+                self.inventory_tab.refresh_inventory()
+            if hasattr(self, 'menu_tab'):
+                self.menu_tab.refresh_menu()
+        
+        # Создаем экземпляры вкладок с передачей колбэка
+        self.orders_tab = OrderTab(refresh_callback=refresh_other_tabs)
         self.menu_tab = MenuTab()
         self.inventory_tab = InventoryTab()
         self.reports_tab = ReportsTab()

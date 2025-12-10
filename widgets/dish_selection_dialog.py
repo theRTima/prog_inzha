@@ -70,8 +70,15 @@ class DishSelectionDialog(QDialog):
                 else:
                     menu_items = repo.get_menu_items_by_category(category)
                 
-                self.menu_table.setRowCount(len(menu_items))
-                for row, item in enumerate(menu_items):
+                # ФИЛЬТРУЕМ ТОЛЬКО ДОСТУПНЫЕ блюда для заказа
+                available_items = [item for item in menu_items if item.available]
+                
+                if not available_items:
+                    QMessageBox.information(self, 'Информация', 
+                        'Нет доступных блюд для заказа. Пополните склад ингредиентов.')
+                
+                self.menu_table.setRowCount(len(available_items))
+                for row, item in enumerate(available_items):
                     self.menu_table.setItem(row, 0, QTableWidgetItem(str(item.id)))
                     self.menu_table.setItem(row, 1, QTableWidgetItem(item.name))
                     self.menu_table.setItem(row, 2, QTableWidgetItem(item.category))

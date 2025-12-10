@@ -40,7 +40,12 @@ class InventoryEditDialog(QDialog):
         stock_layout = QHBoxLayout()
         stock_layout.addWidget(QLabel('Текущий остаток:'))
         self.current_stock_edit = QLineEdit()
-        self.current_stock_edit.setValidator(QDoubleValidator(0, 100000, 3, self))
+        
+        # Настраиваем валидатор для 3 знаков после запятой
+        validator_current = QDoubleValidator(0, 100000, 3, self)
+        validator_current.setNotation(QDoubleValidator.StandardNotation)
+        self.current_stock_edit.setValidator(validator_current)
+        
         self.current_stock_edit.setPlaceholderText("0.000")
         stock_layout.addWidget(self.current_stock_edit)
         stock_layout.addStretch()
@@ -50,7 +55,12 @@ class InventoryEditDialog(QDialog):
         min_stock_layout = QHBoxLayout()
         min_stock_layout.addWidget(QLabel('Минимальный остаток:'))
         self.min_stock_edit = QLineEdit()
-        self.min_stock_edit.setValidator(QDoubleValidator(0, 100000, 3, self))
+        
+        # Настраиваем валидатор для 3 знаков после запятой
+        validator_min = QDoubleValidator(0, 100000, 3, self)
+        validator_min.setNotation(QDoubleValidator.StandardNotation)
+        self.min_stock_edit.setValidator(validator_min)
+        
         self.min_stock_edit.setPlaceholderText("0.000")
         min_stock_layout.addWidget(self.min_stock_edit)
         min_stock_layout.addStretch()
@@ -93,6 +103,10 @@ class InventoryEditDialog(QDialog):
         current_stock_text = self.current_stock_edit.text().strip()
         min_stock_text = self.min_stock_edit.text().strip()
         
+        # Заменяем запятую на точку для корректного преобразования
+        current_stock_text = current_stock_text.replace(',', '.')
+        min_stock_text = min_stock_text.replace(',', '.')
+        
         try:
             current_stock = float(current_stock_text) if current_stock_text else 0
             min_stock = float(min_stock_text) if min_stock_text else 0
@@ -109,6 +123,10 @@ class InventoryEditDialog(QDialog):
     def get_inventory_data(self):
         current_stock_text = self.current_stock_edit.text().strip()
         min_stock_text = self.min_stock_edit.text().strip()
+        
+        # Заменяем запятую на точку
+        current_stock_text = current_stock_text.replace(',', '.')
+        min_stock_text = min_stock_text.replace(',', '.')
         
         current_stock = float(current_stock_text) if current_stock_text else 0
         min_stock = float(min_stock_text) if min_stock_text else 0

@@ -9,6 +9,12 @@ class RecipeRepository:
     def get_recipe_for_menu_item(self, menu_item_id: int) -> List[Recipe]:
         return self.db.query(Recipe).filter(Recipe.menu_item_id == menu_item_id).all()
 
+    def update_all_menu_items_availability(self):
+        """Обновляет доступность всех блюд в меню"""
+        menu_items = self.db.query(MenuItem).all()
+        for menu_item in menu_items:
+            self.update_menu_item_availability(menu_item.id)
+
     def add_recipe_item(self, menu_item_id: int, inventory_id: int, quantity_required: float) -> Recipe:
         recipe_item = Recipe(
             menu_item_id=menu_item_id,
