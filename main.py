@@ -6,7 +6,6 @@ from widgets.login_dialog import LoginDialog
 def main():
     app = QApplication(sys.argv)
     
-    # Показываем диалог авторизации
     login_dialog = LoginDialog()
     if login_dialog.exec_() == LoginDialog.Accepted:
         role = login_dialog.get_role()

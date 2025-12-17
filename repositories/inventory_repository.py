@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from models.models import Inventory  # Обновленный импорт
-from typing import List, Optional
+from models.models import Inventory
+from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 class InventoryRepository:
     def __init__(self, db: Session):
@@ -47,3 +48,66 @@ class InventoryRepository:
 
     def get_low_stock_items(self) -> List[Inventory]:
         return self.db.query(Inventory).filter(Inventory.current_stock <= Inventory.min_stock).all()
+
+    def get_inventory_report(self) -> Dict[str, Any]:
+        """Отчет по остаткам на складе"""
+        try:
+            all_items = self.db.query(Inventory).all()
+            low_stock_items = self.get_low_stock_items()
+            
+            # Статистика по категориям
+            category_stats = {}
+            
+            for item in all_items:
+                category = item.category
+                if category not in category_stats:
+                    category_stats[category] = {
+                        'count': 0,
+                        'items': []
+                    }
+                
+                category_stats[category]['count'] += 1
+                category_stats[category]['items'].append({
+                    'name': item.name,
+                    'current_stock': float(item.current_stock),
+                    'unit': item.unit,
+                    'min_stock': float(item.min_stock)
+                })
+            
+            # Преобразуем объекты Inventory в словари для избежания проблем с сессией
+            low_stock_items_data = []
+            for item in low_stock_items:
+                low_stock_items_data.append({
+                    'id': item.id,
+                    'name': item.name,
+                    'category': item.category,
+                    'unit': item.unit,
+                    'current_stock': float(item.current_stock),
+                    'min_stock': float(item.min_stock),
+                    'supplier': item.supplier
+                })
+            
+            # Преобразуем все items в словари
+            all_items_data = []
+            for item in all_items:
+                all_items_data.append({
+                    'id': item.id,
+                    'name': item.name,
+                    'category': item.category,
+                    'unit': item.unit,
+                    'current_stock': float(item.current_stock),
+                    'min_stock': float(item.min_stock),
+                    'supplier': item.supplier
+                })
+            
+            return {
+                'total_items': len(all_items),
+                'low_stock_count': len(low_stock_items),
+                'low_stock_items': low_stock_items_data,
+                'category_stats': category_stats,
+                'all_items': all_items_data,
+                'report_date': datetime.now()
+            }
+            
+        except Exception as e:
+            raise e

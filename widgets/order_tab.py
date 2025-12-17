@@ -137,7 +137,7 @@ class OrderTab(QWidget):
             
             with get_db() as db:
                 repo = OrderRepository(db)
-                orders = repo.get_all_orders()
+                orders = repo.get_all_orders()  # <-- ПРОВЕРЬТЕ ЭТУ СТРОКУ
                 
                 self.orders_table.setRowCount(len(orders))
                 for row, order in enumerate(orders):
