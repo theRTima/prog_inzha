@@ -1,17 +1,33 @@
+import os
+import csv
+from datetime import datetime
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, 
                              QPushButton, QLabel, QComboBox, QDateEdit, 
                              QMessageBox, QTabWidget, QTableWidget, 
-                             QTableWidgetItem, QHeaderView)
+                             QTableWidgetItem, QHeaderView, QFileDialog)
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QFont
-from datetime import datetime
 from config.database import get_db
 from repositories.order_repository import OrderRepository
 from repositories.inventory_repository import InventoryRepository
 
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+
+try:
+    from openpyxl import Workbook
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+
 class ReportsTab(QWidget):
     def __init__(self):
         super().__init__()
+        self.current_report_data = None
+        self.current_report_type = None
         self.initUI()
 
     def initUI(self):
@@ -65,14 +81,15 @@ class ReportsTab(QWidget):
     def generate_report(self):
         """Генерация отчета"""
         report_type = self.report_type.currentText()
+        self.current_report_type = report_type
         
         try:
             if report_type == 'Отчет по продажам':
-                self.generate_sales_report()
+                self.current_report_data = self.generate_sales_report()
             elif report_type == 'Отчет по остаткам':
-                self.generate_inventory_report()
+                self.current_report_data = self.generate_inventory_report()
             elif report_type == 'Отчет по заказам':
-                self.generate_orders_report()
+                self.current_report_data = self.generate_orders_report()
                 
         except Exception as e:
             QMessageBox.critical(self, 'Ошибка', f'Не удалось сгенерировать отчет: {str(e)}')
@@ -140,6 +157,7 @@ class ReportsTab(QWidget):
                 row += 1
         
         self.report_table.resizeRowsToContents()
+        return report_data
 
     def generate_inventory_report(self):
         """Генерация отчета по остаткам"""
@@ -160,13 +178,13 @@ class ReportsTab(QWidget):
         self.add_table_row(row, 'ОТЧЕТ ПО ОСТАТКАМ НА СКЛАДЕ', '', '', '', True)
         row += 1
         self.add_table_row(row, 'Дата формирования:', 
-                        report_data['report_date'].strftime('%d.%m.%Y %H:%M'), '', '', True)
+                          report_data['report_date'].strftime('%d.%m.%Y %H:%M'), '', '', True)
         row += 1
         self.add_table_row(row, 'Всего позиций:', 
-                        str(report_data['total_items']), '', '', True)
+                          str(report_data['total_items']), '', '', True)
         row += 1
         self.add_table_row(row, 'Низкие остатки:', 
-                        str(report_data['low_stock_count']), '', '', True)
+                          str(report_data['low_stock_count']), '', '', True)
         row += 1
         
         # Список позиций с низким остатком
@@ -177,12 +195,12 @@ class ReportsTab(QWidget):
             for item in report_data['low_stock_items']:
                 status = 'НИЗКИЙ ОСТАТОК'
                 self.add_table_row(row,
-                                item['category'],
-                                item['name'],
-                                f"{item['current_stock']:.3f} {item['unit']}",
-                                f"{item['min_stock']:.3f} {item['unit']}",
-                                status,
-                                True)
+                                  item['category'],
+                                  item['name'],
+                                  f"{item['current_stock']:.3f} {item['unit']}",
+                                  f"{item['min_stock']:.3f} {item['unit']}",
+                                  status,
+                                  True)
                 row += 1
         
         # Все позиции по категориям
@@ -196,15 +214,16 @@ class ReportsTab(QWidget):
             for item in stats['items']:
                 status = 'НОРМА' if item['current_stock'] >= item['min_stock'] else 'НИЗКИЙ'
                 self.add_table_row(row,
-                                '',
-                                item['name'],
-                                f"{item['current_stock']:.3f} {item['unit']}",
-                                f"{item['min_stock']:.3f} {item['unit']}",
-                                status,
-                                False)
+                                  '',
+                                  item['name'],
+                                  f"{item['current_stock']:.3f} {item['unit']}",
+                                  f"{item['min_stock']:.3f} {item['unit']}",
+                                  status,
+                                  False)
                 row += 1
         
         self.report_table.resizeRowsToContents()
+        return report_data
 
     def generate_orders_report(self):
         """Генерация отчета по заказам"""
@@ -271,6 +290,7 @@ class ReportsTab(QWidget):
         self.add_table_row(row, 'ИТОГО:', '', '', '', '', f"{total_revenue:,.2f} руб.", '', True)
         
         self.report_table.resizeRowsToContents()
+        return orders
 
     def add_table_row(self, row, *values, header=False):
         """Добавляет строку в таблицу отчета"""
@@ -286,6 +306,169 @@ class ReportsTab(QWidget):
             self.report_table.setItem(row, col, item)
 
     def export_report(self):
-        """Экспорт отчета в файл (заглушка)"""
-        QMessageBox.information(self, 'Экспорт', 
-                              'Функция экспорта будет реализована в следующей версии')
+        """Экспорт отчета в файл"""
+        if self.report_table.rowCount() == 0:
+            QMessageBox.warning(self, 'Предупреждение', 'Сначала сгенерируйте отчет')
+            return
+        
+        # Определяем доступные форматы
+        formats = []
+        filters = []
+        
+        # Всегда доступен CSV
+        formats.append('CSV (*.csv)')
+        filters.append('csv')
+        
+        # Проверяем доступность других форматов
+        if PANDAS_AVAILABLE or OPENPYXL_AVAILABLE:
+            formats.append('Excel (*.xlsx)')
+            filters.append('xlsx')
+        
+        filter_str = ';;'.join(formats)
+        
+        # Открываем диалог сохранения файла
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            'Экспорт отчета',
+            f"{self.current_report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            filter_str
+        )
+        
+        if not file_path:
+            return
+        
+        # Определяем формат по расширению
+        if file_path.lower().endswith('.csv'):
+            self.export_to_csv(file_path)
+        elif file_path.lower().endswith('.xlsx'):
+            self.export_to_excel(file_path)
+        else:
+            # Если расширение не указано, добавляем по умолчанию
+            if selected_filter:
+                if 'csv' in selected_filter.lower():
+                    file_path += '.csv'
+                    self.export_to_csv(file_path)
+                elif 'xlsx' in selected_filter.lower():
+                    file_path += '.xlsx'
+                    self.export_to_excel(file_path)
+
+    def export_to_csv(self, file_path):
+        """Экспорт в CSV"""
+        try:
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+                writer = csv.writer(csvfile, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                
+                # Записываем заголовки
+                headers = []
+                for col in range(self.report_table.columnCount()):
+                    header_item = self.report_table.horizontalHeaderItem(col)
+                    if header_item:
+                        headers.append(header_item.text())
+                    else:
+                        headers.append(f'Столбец {col+1}')
+                writer.writerow(headers)
+                
+                # Записываем данные
+                for row in range(self.report_table.rowCount()):
+                    row_data = []
+                    for col in range(self.report_table.columnCount()):
+                        item = self.report_table.item(row, col)
+                        if item:
+                            # Заменяем разделители в тексте, чтобы не портить CSV
+                            text = item.text().replace(';', ',').replace('\n', ' ')
+                            row_data.append(text)
+                        else:
+                            row_data.append('')
+                    writer.writerow(row_data)
+            
+            QMessageBox.information(self, 'Успех', f'Отчет сохранен в файл:\n{file_path}')
+            
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f'Не удалось сохранить отчет в CSV: {str(e)}')
+
+    def export_to_excel(self, file_path):
+        """Экспорт в Excel"""
+        try:
+            if PANDAS_AVAILABLE:
+                # Используем pandas если доступен
+                self.export_to_excel_pandas(file_path)
+            elif OPENPYXL_AVAILABLE:
+                # Используем openpyxl если доступен
+                self.export_to_excel_openpyxl(file_path)
+            else:
+                QMessageBox.warning(self, 'Ошибка', 
+                                  'Для экспорта в Excel требуется установить библиотеку pandas или openpyxl.\n\n'
+                                  'Установите одну из команд:\n'
+                                  'pip install pandas\n'
+                                  'pip install openpyxl')
+                return
+                
+        except Exception as e:
+            QMessageBox.critical(self, 'Ошибка', f'Не удалось сохранить отчет в Excel: {str(e)}')
+
+    def export_to_excel_pandas(self, file_path):
+        """Экспорт в Excel через pandas"""
+        # Собираем данные из таблицы
+        data = []
+        
+        # Заголовки
+        headers = []
+        for col in range(self.report_table.columnCount()):
+            header_item = self.report_table.horizontalHeaderItem(col)
+            if header_item:
+                headers.append(header_item.text())
+            else:
+                headers.append(f'Столбец {col+1}')
+        
+        # Данные
+        for row in range(self.report_table.rowCount()):
+            row_data = []
+            for col in range(self.report_table.columnCount()):
+                item = self.report_table.item(row, col)
+                if item:
+                    row_data.append(item.text())
+                else:
+                    row_data.append('')
+            data.append(row_data)
+        
+        # Создаем DataFrame
+        df = pd.DataFrame(data, columns=headers)
+        
+        # Сохраняем в Excel
+        df.to_excel(file_path, index=False, engine='openpyxl')
+        QMessageBox.information(self, 'Успех', f'Отчет сохранен в файл:\n{file_path}')
+
+    def export_to_excel_openpyxl(self, file_path):
+        """Экспорт в Excel через openpyxl"""
+        wb = Workbook()
+        ws = wb.active
+        ws.title = self.current_report_type if self.current_report_type else 'Отчет'
+        
+        # Записываем заголовки
+        for col in range(self.report_table.columnCount()):
+            header_item = self.report_table.horizontalHeaderItem(col)
+            if header_item:
+                ws.cell(row=1, column=col+1, value=header_item.text())
+        
+        # Записываем данные
+        for row in range(self.report_table.rowCount()):
+            for col in range(self.report_table.columnCount()):
+                item = self.report_table.item(row, col)
+                if item:
+                    ws.cell(row=row+2, column=col+1, value=item.text())
+        
+        # Автоматическая ширина столбцов
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        wb.save(file_path)
+        QMessageBox.information(self, 'Успех', f'Отчет сохранен в файл:\n{file_path}')
