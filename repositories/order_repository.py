@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
+from datetime import datetime, date
+from typing import List, Optional, Dict, Any, Tuple
+from sqlalchemy import func, extract
+from sqlalchemy.orm import Session, joinedload
 from models.models import Order, OrderItem, MenuItem, Inventory
-from typing import List, Optional
 
 class OrderRepository:
     def __init__(self, db: Session):
@@ -21,7 +23,8 @@ class OrderRepository:
     def get_order(self, order_id: int) -> Optional[Order]:
         return self.db.query(Order).filter(Order.id == order_id).first()
     
-    def get_all_orders(self) -> List[Order]:
+    def get_all_orders(self) -> List[Order]:  # <-- ВОССТАНАВЛИВАЕМ ЭТОТ МЕТОД
+        """Получение всех заказов"""
         return self.db.query(Order).order_by(Order.created.desc()).all()
     
     def update_order(self, order_id: int, **kwargs) -> Optional[Order]:
@@ -202,4 +205,102 @@ class OrderRepository:
             
         except Exception as e:
             self.db.rollback()
+            raise e
+
+    # ==================== МЕТОДЫ ДЛЯ ОТЧЕТОВ ====================
+    
+    def get_sales_report(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
+        """Отчет по продажам за период"""
+        try:
+            # Общая статистика
+            orders_query = self.db.query(Order).filter(
+                Order.created >= start_date,
+                Order.created <= end_date,
+                Order.status.in_(['Подтвержден', 'Готовится', 'Готов к выдаче', 'Выдан'])
+            )
+            
+            total_orders = orders_query.count()
+            
+            # Общая выручка
+            total_revenue = orders_query.with_entities(func.sum(Order.total)).scalar() or 0
+            
+            # Статистика по блюдам
+            dishes_stats = self.db.query(
+                MenuItem.name,
+                MenuItem.category,
+                func.sum(OrderItem.quantity).label('total_quantity'),
+                func.sum(OrderItem.quantity * OrderItem.price).label('total_revenue')
+            ).join(OrderItem, OrderItem.menu_item_id == MenuItem.id)\
+             .join(Order, Order.id == OrderItem.order_id)\
+             .filter(
+                 Order.created >= start_date,
+                 Order.created <= end_date,
+                 Order.status.in_(['Подтвержден', 'Готовится', 'Готов к выдаче', 'Выдан'])
+             )\
+             .group_by(MenuItem.id, MenuItem.name, MenuItem.category)\
+             .order_by(func.sum(OrderItem.quantity * OrderItem.price).desc())\
+             .all()
+            
+            # Статистика по дням
+            daily_stats = self.db.query(
+                func.date(Order.created).label('date'),
+                func.count(Order.id).label('orders_count'),
+                func.sum(Order.total).label('daily_revenue')
+            ).filter(
+                Order.created >= start_date,
+                Order.created <= end_date,
+                Order.status.in_(['Подтвержден', 'Готовится', 'Готов к выдаче', 'Выдан'])
+            )\
+             .group_by(func.date(Order.created))\
+             .order_by(func.date(Order.created))\
+             .all()
+            
+            return {
+                'total_orders': total_orders,
+                'total_revenue': float(total_revenue),
+                'dishes_stats': dishes_stats,
+                'daily_stats': daily_stats,
+                'period_start': start_date,
+                'period_end': end_date
+            }
+            
+        except Exception as e:
+            raise e
+    
+    def get_orders_report(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
+        """Отчет по заказам за период"""
+        try:
+            orders = self.db.query(Order).options(
+                joinedload(Order.items).joinedload(OrderItem.menu_item)
+            ).filter(
+                Order.created >= start_date,
+                Order.created <= end_date
+            ).order_by(Order.created.desc()).all()
+            
+            result = []
+            for order in orders:
+                order_data = {
+                    'id': order.id,
+                    'customer_name': order.customer_name,
+                    'phone': order.phone,
+                    'status': order.status,
+                    'created': order.created,
+                    'total': float(order.total),
+                    'notes': order.notes,
+                    'items': []
+                }
+                
+                for item in order.items:
+                    order_data['items'].append({
+                        'dish_name': item.menu_item.name if item.menu_item else 'Неизвестно',
+                        'quantity': item.quantity,
+                        'price': float(item.price),
+                        'subtotal': float(item.quantity * item.price)
+                    })
+                
+                result.append(order_data)
+            
+            return result
+            
+        except Exception as e:
             raise e
